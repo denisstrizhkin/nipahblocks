@@ -5,6 +5,11 @@
 
 #include "camera.h"
 
+typedef struct GameInfo {
+  bool is_cursor_capture;
+} GameInfo;
+
+
 void draw_cross(void) {
     const int width = GetScreenWidth();
     const int height = GetScreenHeight();
@@ -20,16 +25,29 @@ void draw_cross(void) {
     DrawRectangleV(vertical_pos, vertical_size, BLACK);
 }
 
+void update_cursor_capture(GameInfo *game_info) {
+  if (game_info->is_cursor_capture == false) {
+    if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+      game_info->is_cursor_capture = true;
+      DisableCursor();
+    }
+  } else {
+    if (IsKeyPressed(KEY_ESCAPE)) {
+      game_info->is_cursor_capture = false;
+      EnableCursor();
+    }
+  }
+}
+
 int main(void) {
-  // Initialization
-  //--------------------------------------------------------------------------------------
   const int screenWidth = 800;
   const int screenHeight = 600;
   Camera camera = create_camera();
+  GameInfo game_info = {};
 
   InitWindow(screenWidth, screenHeight,
              "raylib [core] example - 3d camera free");
-  DisableCursor();
+  SetExitKey(KEY_NULL);
 
   Vector3 block_pos = {0.0f, 0.0f, 0.0f};
   Vector3 block_size = {1.0f, 1.0f, 1.0f};
@@ -37,15 +55,15 @@ int main(void) {
   SetTargetFPS(60);
   while (!WindowShouldClose()) {
     update_camera(&camera);
+    update_cursor_capture(&game_info);
 
-    if (IsKeyPressed('Z'))
-      camera.target = (Vector3){0.0f, 0.0f, 0.0f};
     BeginDrawing();
     ClearBackground(RAYWHITE);
 
     BeginMode3D(camera);
     DrawCubeV(block_pos, block_size, RED);
     EndMode3D();
+
     DrawText(TextFormat("Position: { %.3f, %.3f, %.3f }", camera.position.x,
                         camera.position.y, camera.position.z),
              5, 5, 20, BLACK);

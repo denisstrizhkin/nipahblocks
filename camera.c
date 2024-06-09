@@ -27,14 +27,14 @@ void camera_yaw(Camera *camera, float angle) {
   Vector3 forward = get_camera_forward(camera);
   Vector3 up = get_camera_up(camera);
   Vector3 forward_rotated = Vector3RotateByAxisAngle(forward, up, angle);
-  camera->position = Vector3Subtract(camera->target, forward_rotated);
+  camera->target = Vector3Add(camera->position, forward_rotated);
 }
 
 void camera_pitch(Camera *camera, float angle) {
   Vector3 forward = get_camera_forward(camera);
   Vector3 right = get_camera_right(camera);
   Vector3 forward_rotated = Vector3RotateByAxisAngle(forward, right, angle);
-  camera->position = Vector3Subtract(camera->target, forward_rotated);
+  camera->target = Vector3Add(camera->position, forward_rotated);
 }
 
 void camera_move_right(Camera *camera, float distance) {
@@ -75,7 +75,7 @@ void update_camera(Camera *camera) {
 }
 
 Camera create_camera(void) {
-  Camera3D camera = {.position = (Vector3){10.0f, 10.0f, 10.0f},
+  Camera3D camera = {.position = (Vector3){10.0f, 0.0f, 0.0f},
                      .target = (Vector3){0.0f, 0.0f, 0.0f},
                      .up = (Vector3){0.0f, 1.0f, 0.0f},
                      .fovy = 45.0f,
