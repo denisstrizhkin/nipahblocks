@@ -33,6 +33,21 @@ void camera_yaw(Camera *camera, float angle) {
 void camera_pitch(Camera *camera, float angle) {
   Vector3 forward = get_camera_forward(camera);
   Vector3 right = get_camera_right(camera);
+  Vector3 up = get_camera_up(camera);
+
+  float max_angle_up = Vector3Angle(up, forward);
+  max_angle_up -= 0.001f;
+  if (angle > max_angle_up) {
+    angle = max_angle_up;
+  }
+
+  float max_angle_down = Vector3Angle(Vector3Negate(up), forward);
+  max_angle_down *= -1.0f;
+  max_angle_down += 0.001f;
+  if (angle < max_angle_down) {
+    angle = max_angle_down;
+  }
+
   Vector3 forward_rotated = Vector3RotateByAxisAngle(forward, right, angle);
   camera->target = Vector3Add(camera->position, forward_rotated);
 }
