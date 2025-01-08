@@ -4,75 +4,12 @@ use bevy::{
     pbr::wireframe::{Wireframe, WireframeColor},
     prelude::*,
 };
-
 use std::f32::consts::FRAC_PI_2;
 
+mod block;
+use block::Block;
+
 const TILE_WIDTH: f32 = 16.0;
-
-struct Block {
-    front: u32,
-    back: u32,
-    left: u32,
-    right: u32,
-    top: u32,
-    bottom: u32,
-}
-
-impl Block {
-    pub fn new(front: u32, back: u32, left: u32, right: u32, top: u32, bottom: u32) -> Self {
-        Self {
-            front,
-            back,
-            left,
-            right,
-            top,
-            bottom,
-        }
-    }
-
-    // pub fn generate_mesh(position: Vector3) -> Mesh {
-    //     let mut mesh = allocate_mesh(2 * 6, 2 * 6 * 3);
-
-    //     // front
-    //     mesh.vertices_mut()[0].x = 0.0;
-    //     mesh.vertices_mut()[0].y = 0.0;
-    //     mesh.vertices_mut()[0].z = 0.0;
-    //     mesh.normals_mut()[0].x = 0.0;
-    //     mesh.normals_mut()[0].y = 0.0;
-    //     mesh.normals_mut()[0].z = 1.0;
-    //     unsafe {
-    //         *mesh.texcoords.add(0) = 0.0;
-    //         *mesh.texcoords.add(1) = 0.0;
-    //     }
-
-    //     mesh.vertices_mut()[1].x = 1.0;
-    //     mesh.vertices_mut()[1].y = 0.0;
-    //     mesh.vertices_mut()[1].z = 0.0;
-    //     mesh.normals_mut()[1].x = 0.0;
-    //     mesh.normals_mut()[1].y = 0.0;
-    //     mesh.normals_mut()[1].z = 1.0;
-    //     unsafe {
-    //         *mesh.texcoords.add(2) = TILE_WIDTH / 160.0;
-    //         *mesh.texcoords.add(3) = 0.0;
-    //     }
-
-    //     mesh.vertices_mut()[2].x = 0.0;
-    //     mesh.vertices_mut()[2].y = 1.0;
-    //     mesh.vertices_mut()[2].z = 0.0;
-    //     mesh.normals_mut()[2].x = 0.0;
-    //     mesh.normals_mut()[2].y = 0.0;
-    //     mesh.normals_mut()[2].z = 1.0;
-    //     unsafe {
-    //         *mesh.texcoords.add(4) = 0.0;
-    //         *mesh.texcoords.add(5) = TILE_WIDTH / 256.0;
-    //     }
-
-    //     unsafe {
-    //         mesh.upload(false);
-    //     }
-    //     mesh
-    // }
-}
 
 #[derive(Debug, Component)]
 struct Player {
@@ -99,16 +36,12 @@ impl Default for CameraSensitivity {
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
-        .add_systems(Startup, (spawn_view_model, setup))
+        .add_systems(Startup, (spawn_player, setup))
         .add_systems(Update, move_player)
         .run();
 }
 
-fn spawn_view_model(
-    mut commands: Commands,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
-) {
+fn spawn_player(mut commands: Commands) {
     commands
         .spawn((
             Player::default(),
@@ -135,9 +68,8 @@ fn setup(
 ) {
     // cube
     commands.spawn((
-        Mesh3d(meshes.add(Cuboid::from_length(1.0))),
+        Mesh3d(meshes.add(Block::new(0, 0, 0, 0, 0, 0))),
         MeshMaterial3d(materials.add(Color::BLACK)),
-        Transform::from_xyz(0.0, 0.5, 0.0),
         Wireframe,
     ));
     // light
