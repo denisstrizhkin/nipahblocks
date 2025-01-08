@@ -1,5 +1,11 @@
 use anyhow::{anyhow, Result};
-use raylib::prelude::*;
+use bevy::{
+    input::mouse::AccumulatedMouseMotion,
+    pbr::wireframe::{Wireframe, WireframeColor},
+    prelude::*,
+};
+
+use std::f32::consts::FRAC_PI_2;
 
 const TILE_WIDTH: f32 = 16.0;
 
@@ -24,114 +30,142 @@ impl Block {
         }
     }
 
-    pub fn generate_mesh(position: Vector3) -> Mesh {
-        let mut mesh = allocate_mesh(2 * 6, 8);
-        mesh
+    // pub fn generate_mesh(position: Vector3) -> Mesh {
+    //     let mut mesh = allocate_mesh(2 * 6, 2 * 6 * 3);
+
+    //     // front
+    //     mesh.vertices_mut()[0].x = 0.0;
+    //     mesh.vertices_mut()[0].y = 0.0;
+    //     mesh.vertices_mut()[0].z = 0.0;
+    //     mesh.normals_mut()[0].x = 0.0;
+    //     mesh.normals_mut()[0].y = 0.0;
+    //     mesh.normals_mut()[0].z = 1.0;
+    //     unsafe {
+    //         *mesh.texcoords.add(0) = 0.0;
+    //         *mesh.texcoords.add(1) = 0.0;
+    //     }
+
+    //     mesh.vertices_mut()[1].x = 1.0;
+    //     mesh.vertices_mut()[1].y = 0.0;
+    //     mesh.vertices_mut()[1].z = 0.0;
+    //     mesh.normals_mut()[1].x = 0.0;
+    //     mesh.normals_mut()[1].y = 0.0;
+    //     mesh.normals_mut()[1].z = 1.0;
+    //     unsafe {
+    //         *mesh.texcoords.add(2) = TILE_WIDTH / 160.0;
+    //         *mesh.texcoords.add(3) = 0.0;
+    //     }
+
+    //     mesh.vertices_mut()[2].x = 0.0;
+    //     mesh.vertices_mut()[2].y = 1.0;
+    //     mesh.vertices_mut()[2].z = 0.0;
+    //     mesh.normals_mut()[2].x = 0.0;
+    //     mesh.normals_mut()[2].y = 0.0;
+    //     mesh.normals_mut()[2].z = 1.0;
+    //     unsafe {
+    //         *mesh.texcoords.add(4) = 0.0;
+    //         *mesh.texcoords.add(5) = TILE_WIDTH / 256.0;
+    //     }
+
+    //     unsafe {
+    //         mesh.upload(false);
+    //     }
+    //     mesh
+    // }
+}
+
+#[derive(Debug, Component)]
+struct Player;
+
+#[derive(Debug, Component, Deref, DerefMut)]
+struct CameraSensitivity(Vec2);
+
+impl Default for CameraSensitivity {
+    fn default() -> Self {
+        Self(Vec2::new(0.002, 0.002))
     }
 }
 
-fn allocate_mesh(triangle_count: usize, vertex_count: usize) -> Mesh {
-    unsafe {
-        let zeroed = std::mem::MaybeUninit::zeroed().assume_init();
-        Mesh::from_raw(ffi::Mesh {
-            vertexCount: vertex_count as i32,
-            triangleCount: triangle_count as i32,
-            vertices: ffi::MemAlloc((size_of::<[f32; 3]>() * vertex_count * 8) as u32).cast(),
-            normals: ffi::MemAlloc((size_of::<[f32; 3]>() * vertex_count * 8) as u32).cast(),
-            texcoords: ffi::MemAlloc((size_of::<[f32; 2]>() * vertex_count * 8) as u32).cast(),
-            ..zeroed
-        })
-    }
+fn main() {
+    App::new()
+        .add_plugins(DefaultPlugins)
+        .add_systems(Startup, (spawn_view_model, setup))
+        .add_systems(Update, move_player)
+        .run();
 }
 
-// Generate a simple triangle mesh from code
-fn gen_triangle_mesh() -> Mesh {
-    let mut mesh = allocate_mesh(1, 3);
-
-    // Vertex at (0, 0, 0)
-    mesh.vertices_mut()[0].x = 0.0;
-    mesh.vertices_mut()[0].y = 0.0;
-    mesh.vertices_mut()[0].z = 0.0;
-    mesh.normals_mut()[0].x = 0.0;
-    mesh.normals_mut()[0].y = 1.0;
-    mesh.normals_mut()[0].z = 0.0;
-    unsafe {
-        *mesh.texcoords.add(0) = 0.0;
-        *mesh.texcoords.add(1) = 0.0;
-    }
-
-    // Vertex at (1, 0, 0)
-    mesh.vertices_mut()[1].x = 1.0;
-    mesh.vertices_mut()[1].y = 0.0;
-    mesh.vertices_mut()[1].z = 0.0;
-    mesh.normals_mut()[1].x = 0.0;
-    mesh.normals_mut()[1].y = 1.0;
-    mesh.normals_mut()[1].z = 0.0;
-    unsafe {
-        *mesh.texcoords.add(2) = TILE_WIDTH / 160.0;
-        *mesh.texcoords.add(3) = 0.0;
-    }
-
-    // // Vertex at (0, 1, 0)
-    mesh.vertices_mut()[2].x = 0.0;
-    mesh.vertices_mut()[2].y = 1.0;
-    mesh.vertices_mut()[2].z = 0.0;
-    mesh.normals_mut()[2].x = 0.0;
-    mesh.normals_mut()[2].y = 1.0;
-    mesh.normals_mut()[2].z = 0.0;
-    unsafe {
-        *mesh.texcoords.add(4) = 0.0;
-        *mesh.texcoords.add(5) = TILE_WIDTH / 256.0;
-    }
-
-    // Upload mesh data from CPU (RAM) to GPU (VRAM) memory
-    unsafe {
-        mesh.upload(false);
-    }
-    mesh
+fn spawn_view_model(
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+) {
+    commands
+        .spawn((
+            Player,
+            CameraSensitivity::default(),
+            Transform::from_xyz(5.0, 0.0, 5.0),
+            Visibility::default(),
+        ))
+        .with_children(|parent| {
+            parent.spawn((
+                Camera3d::default(),
+                Projection::from(PerspectiveProjection {
+                    fov: 90.0_f32.to_radians(),
+                    ..default()
+                }),
+            ));
+        });
 }
 
-fn main() -> Result<()> {
-    let (mut rl, thread) = raylib::init().size(640, 480).title("Hello, World").build();
+/// set up a simple 3D scene
+fn setup(
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+) {
+    // plane
+    commands.spawn((
+        Mesh3d(meshes.add(Plane3d::new(
+            Vec3::new(0.0, 1.0, 0.0),
+            Vec2::new(10.0, 10.0),
+        ))),
+        MeshMaterial3d(materials.add(Color::WHITE)),
+    ));
+    // cube
+    commands.spawn((
+        Mesh3d(meshes.add(Cuboid::from_length(1.0))),
+        MeshMaterial3d(materials.add(Color::BLACK)),
+        Transform::from_xyz(0.0, 0.5, 0.0),
+        Wireframe,
+    ));
+    // light
+    commands.spawn((
+        PointLight {
+            shadows_enabled: false,
+            ..default()
+        },
+        Transform::from_xyz(4.0, 8.0, 4.0),
+    ));
+}
 
-    let tilemap = rl
-        .load_texture(&thread, "assets/tilemap.png")
-        .map_err(|e| anyhow!(e))?;
-    let rect = Rectangle::new(TILE_WIDTH * 3.0, 0.0, TILE_WIDTH, TILE_WIDTH);
-
-    let mesh = gen_triangle_mesh();
-    let model = unsafe {
-        let mut model = rl
-            .load_model_from_mesh(&thread, mesh.make_weak())
-            .map_err(|e| anyhow!(e))?;
-        model.materials_mut()[0].maps_mut()[MaterialMapIndex::MATERIAL_MAP_ALBEDO as usize]
-            .texture = *tilemap.as_ref();
-        model
+fn move_player(
+    accumulated_mouse_motion: Res<AccumulatedMouseMotion>,
+    mut player: Query<(&mut Transform, &CameraSensitivity), With<Player>>,
+) {
+    let Ok((mut transform, camera_sensitivity)) = player.get_single_mut() else {
+        return;
     };
-    let model_pos = rvec3(0.0, 0.0, 0.0);
+    let delta = accumulated_mouse_motion.delta;
+    if delta != Vec2::ZERO {
+        let delta_yaw = -delta.x * camera_sensitivity.x;
+        let delta_pitch = -delta.y * camera_sensitivity.y;
 
-    let mut camera = Camera3D::perspective(
-        rvec3(5.0, 5.0, 5.0),
-        rvec3(0.0, 0.0, 0.0),
-        rvec3(0.0, 1.0, 0.0),
-        45.0,
-    );
-    rl.set_target_fps(60);
-    while !rl.window_should_close() {
-        rl.update_camera(&mut camera, CameraMode::CAMERA_FREE);
-        let mut d = rl.begin_drawing(&thread);
-        d.clear_background(Color::WHITE);
+        let (yaw, pitch, roll) = transform.rotation.to_euler(EulerRot::YXZ);
+        let yaw = yaw + delta_yaw;
 
-        {
-            let mut d = d.begin_mode3D(camera);
+        const PITCH_LIMIT: f32 = FRAC_PI_2 - 0.01;
+        let pitch = (pitch + delta_pitch).clamp(-PITCH_LIMIT, PITCH_LIMIT);
 
-            // d.draw_cube_v(rvec3(0.0, 0.0, 0.0), rvec3(2.0, 2.0, 2.0), Color::RED);
-            d.draw_grid(10, 1.0);
-            d.draw_model(&model, model_pos, 1.0, Color::WHITE);
-        }
-
-        d.draw_text("Hello, world!", 12, 12, 20, Color::BLACK);
-        d.draw_texture_rec(&tilemap, rect, rvec2(0.0, 0.0), Color::WHITE);
+        transform.rotation = Quat::from_euler(EulerRot::YXZ, yaw, pitch, roll);
     }
-    Ok(())
 }
