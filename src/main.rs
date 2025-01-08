@@ -1,15 +1,32 @@
 use anyhow::{anyhow, Result};
 use bevy::{
+    asset::LoadedFolder,
+    image::ImageSampler,
     input::mouse::AccumulatedMouseMotion,
     pbr::wireframe::{Wireframe, WireframeColor},
     prelude::*,
 };
-use std::f32::consts::FRAC_PI_2;
+use std::{collections::HashMap, f32::consts::FRAC_PI_2};
 
 mod block;
 use block::Block;
 
-const TILE_WIDTH: f32 = 16.0;
+const TILEMAP_PATH: &str = "assets/tilemap.png";
+const TILEMAP_COLUMNS: u32 = 10;
+const TILEMAP_ROWS: u32 = 16;
+const TILE_WIDTH: u32 = 16;
+
+#[derive(Debug, Resource)]
+struct GameAssets {
+    block_textures: Handle<LoadedFolder>,
+}
+
+#[derive(Debug, Resource)]
+struct GameResources {
+    texture_atlas: Handle<Image>,
+    texture_map: HashMap<String, u32>,
+    material: Handle<StandardMaterial>,
+}
 
 #[derive(Debug, Component)]
 struct Player {
@@ -36,28 +53,75 @@ impl Default for CameraSensitivity {
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
+        .add_systems(Startup, load_assets)
+        .add_systems(Startup, setup_resources)
         .add_systems(Startup, (spawn_player, setup))
         .add_systems(Update, move_player)
         .run();
 }
 
-fn spawn_player(mut commands: Commands) {
-    commands
-        .spawn((
-            Player::default(),
-            CameraSensitivity::default(),
-            Transform::from_xyz(2.0, 0.5, 2.0),
-            Visibility::default(),
-        ))
-        .with_children(|parent| {
-            parent.spawn((
-                Camera3d::default(),
-                Projection::from(PerspectiveProjection {
-                    fov: 45.0_f32.to_radians(),
-                    ..default()
-                }),
-            ));
-        });
+fn load_assets(mut commands: Commands, asset_server: Res<AssetServer>) {
+    commands.insert_resource(GameAssets {
+        block_textures: asset_server.load_folder("textures"),
+    });
+}
+
+fn setup_resources(
+    mut commands: Commands,
+    mut images: ResMut<Assets<Image>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+    game_assets: Res<GameAssets>,
+    loaded_folders: Res<Assets<LoadedFolder>>,
+) -> Result<()> {
+    let (texture_map, mut layout_builder) = loaded_folders
+        .get(&game_assets.block_textures)
+        .ok_or(anyhow!("Couldn't load block textures folder"))?
+        .handles
+        .iter()
+        .try_fold(
+            (
+                HashMap::<String, u32>::new(),
+                TextureAtlasBuilder::default(),
+            ),
+            |(mut map, mut builder), handle| {
+                let id = handle.id().try_typed::<Image>()?;
+                let path = handle
+                    .path()
+                    .and_then(|p| p.path().file_name())
+                    .map(|n| n.to_string_lossy())
+                    .ok_or(anyhow!("Failed to retrieve image's file name"))?;
+
+                let texture = images
+                    .get(id)
+                    .ok_or(anyhow!("Failed to retrieve image: {path}"))?;
+
+                builder.add_texture(Some(id), texture);
+                if map.contains_key(path.as_ref()) {
+                    return Err(anyhow!("Duplicate image: {path}"));
+                }
+                let index = map.len();
+                map.insert(path.to_string(), index as u32);
+
+                info!("Loaded texture {path} into atlas at {index}");
+                anyhow::Ok((map, builder))
+            },
+        )?;
+    let (_layout, _sources, mut image) = layout_builder.build()?;
+    image.sampler = ImageSampler::nearest();
+    let texture_atlas = images.add(image);
+    let material = materials.add(StandardMaterial {
+        base_color: Color::WHITE,
+        base_color_texture: Some(texture_atlas.clone()),
+        perceptual_roughness: 0.97,
+        reflectance: 0.1,
+        ..default()
+    });
+    commands.insert_resource(GameResources {
+        texture_atlas,
+        texture_map,
+        material,
+    });
+    Ok(())
 }
 
 /// set up a simple 3D scene
@@ -80,6 +144,25 @@ fn setup(
         },
         Transform::from_xyz(4.0, 8.0, 4.0),
     ));
+}
+
+fn spawn_player(mut commands: Commands) {
+    commands
+        .spawn((
+            Player::default(),
+            CameraSensitivity::default(),
+            Transform::from_xyz(2.0, 0.5, 2.0),
+            Visibility::default(),
+        ))
+        .with_children(|parent| {
+            parent.spawn((
+                Camera3d::default(),
+                Projection::from(PerspectiveProjection {
+                    fov: 45.0_f32.to_radians(),
+                    ..default()
+                }),
+            ));
+        });
 }
 
 fn move_player(
