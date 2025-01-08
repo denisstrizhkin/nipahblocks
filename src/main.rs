@@ -75,7 +75,17 @@ impl Block {
 }
 
 #[derive(Debug, Component)]
-struct Player;
+struct Player {
+    movement_speed: f32,
+}
+
+impl Default for Player {
+    fn default() -> Self {
+        Self {
+            movement_speed: 5.0,
+        }
+    }
+}
 
 #[derive(Debug, Component, Deref, DerefMut)]
 struct CameraSensitivity(Vec2);
@@ -101,16 +111,16 @@ fn spawn_view_model(
 ) {
     commands
         .spawn((
-            Player,
+            Player::default(),
             CameraSensitivity::default(),
-            Transform::from_xyz(5.0, 0.0, 5.0),
+            Transform::from_xyz(2.0, 0.5, 2.0),
             Visibility::default(),
         ))
         .with_children(|parent| {
             parent.spawn((
                 Camera3d::default(),
                 Projection::from(PerspectiveProjection {
-                    fov: 90.0_f32.to_radians(),
+                    fov: 45.0_f32.to_radians(),
                     ..default()
                 }),
             ));
@@ -123,14 +133,6 @@ fn setup(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
-    // plane
-    commands.spawn((
-        Mesh3d(meshes.add(Plane3d::new(
-            Vec3::new(0.0, 1.0, 0.0),
-            Vec2::new(10.0, 10.0),
-        ))),
-        MeshMaterial3d(materials.add(Color::WHITE)),
-    ));
     // cube
     commands.spawn((
         Mesh3d(meshes.add(Cuboid::from_length(1.0))),
@@ -149,10 +151,12 @@ fn setup(
 }
 
 fn move_player(
+    time: Res<Time>,
     accumulated_mouse_motion: Res<AccumulatedMouseMotion>,
-    mut player: Query<(&mut Transform, &CameraSensitivity), With<Player>>,
+    keyboard: Res<ButtonInput<KeyCode>>,
+    mut player_q: Query<(&mut Transform, &Player, &CameraSensitivity), With<Player>>,
 ) {
-    let Ok((mut transform, camera_sensitivity)) = player.get_single_mut() else {
+    let Ok((mut transform, player, camera_sensitivity)) = player_q.get_single_mut() else {
         return;
     };
     let delta = accumulated_mouse_motion.delta;
@@ -168,4 +172,20 @@ fn move_player(
 
         transform.rotation = Quat::from_euler(EulerRot::YXZ, yaw, pitch, roll);
     }
+    let mut direction = Vec3::ZERO;
+    if keyboard.pressed(KeyCode::ArrowUp) {
+        direction += *transform.forward();
+    }
+    if keyboard.pressed(KeyCode::ArrowDown) {
+        direction += *transform.back();
+    }
+    if keyboard.pressed(KeyCode::ArrowLeft) {
+        direction += *transform.left();
+    }
+    if keyboard.pressed(KeyCode::ArrowRight) {
+        direction += *transform.right();
+    }
+    direction.y = 0.0;
+    let movement = direction.normalize_or_zero() * player.movement_speed * time.delta_secs();
+    transform.translation += movement;
 }
