@@ -1,6 +1,8 @@
 use anyhow::{anyhow, Result};
 use raylib::prelude::*;
 
+const TILE_WIDTH: f32 = 16.0;
+
 struct Block {
     front: u32,
     back: u32,
@@ -14,11 +16,11 @@ fn allocate_mesh(triangle_count: usize, vertex_count: usize) -> Mesh {
     unsafe {
         let zeroed = std::mem::MaybeUninit::zeroed().assume_init();
         Mesh::from_raw(ffi::Mesh {
-            vertexCount: triangle_count as i32,
-            triangleCount: vertex_count as i32,
-            vertices: ffi::MemAlloc((size_of::<[f32; 3]>() * vertex_count) as u32).cast(),
-            texcoords: ffi::MemAlloc((size_of::<[f32; 2]>() * vertex_count) as u32).cast(),
-            normals: ffi::MemAlloc((size_of::<[f32; 3]>() * vertex_count) as u32).cast(),
+            vertexCount: vertex_count as i32,
+            triangleCount: triangle_count as i32,
+            vertices: ffi::MemAlloc((size_of::<f32>() * 3 * vertex_count * 8) as u32).cast(),
+            normals: ffi::MemAlloc((size_of::<f32>() * 3 * vertex_count * 8) as u32).cast(),
+            texcoords: ffi::MemAlloc((size_of::<[f32; 2]>() * vertex_count * 8) as u32).cast(),
             ..zeroed
         })
     }
@@ -36,25 +38,25 @@ fn gen_triangle_mesh() -> Mesh {
     mesh.normals_mut()[0].y = 1.0;
     mesh.normals_mut()[0].z = 0.0;
     // mesh.texcoords[0] = 0;
-    // mesh.texcoords[1] = 0;
+    // mesh.textcoords_mut()[1] = 0;
 
     // Vertex at (1, 0, 2)
-    mesh.vertices_mut()[0].x = 1.0;
-    mesh.vertices_mut()[0].y = 0.0;
-    mesh.vertices_mut()[0].z = 2.0;
-    mesh.normals_mut()[0].x = 0.0;
-    mesh.normals_mut()[0].y = 1.0;
-    mesh.normals_mut()[0].z = 0.0;
+    mesh.vertices_mut()[1].x = 1.0;
+    mesh.vertices_mut()[1].y = 0.0;
+    mesh.vertices_mut()[1].z = 2.0;
+    mesh.normals_mut()[1].x = 0.0;
+    mesh.normals_mut()[1].y = 1.0;
+    mesh.normals_mut()[1].z = 0.0;
     // mesh.texcoords[2] = 0.5f;
     // mesh.texcoords[3] = 1.0f;
 
     // // Vertex at (2, 0, 0)
-    mesh.vertices_mut()[0].x = 2.0;
-    mesh.vertices_mut()[0].y = 0.0;
-    mesh.vertices_mut()[0].z = 0.0;
-    mesh.normals_mut()[0].x = 0.0;
-    mesh.normals_mut()[0].y = 1.0;
-    mesh.normals_mut()[0].z = 0.0;
+    mesh.vertices_mut()[2].x = 2.0;
+    mesh.vertices_mut()[2].y = 0.0;
+    mesh.vertices_mut()[2].z = 0.0;
+    mesh.normals_mut()[2].x = 0.0;
+    mesh.normals_mut()[2].y = 1.0;
+    mesh.normals_mut()[2].z = 0.0;
     // mesh.texcoords[4] = 1;
     // mesh.texcoords[5] = 0;
 
@@ -71,18 +73,16 @@ fn main() -> Result<()> {
     let tilemap = rl
         .load_texture(&thread, "assets/tilemap.png")
         .map_err(|e| anyhow!(e))?;
-    let width = 16.0;
-    let rect = Rectangle::new(width * 3.0, 0.0, width, width);
-    println!("{tilemap:?}");
+    let rect = Rectangle::new(TILE_WIDTH * 3.0, 0.0, TILE_WIDTH, TILE_WIDTH);
 
     let mesh = gen_triangle_mesh();
     let model = unsafe {
         rl.load_model_from_mesh(&thread, mesh.make_weak())
             .map_err(|e| anyhow!(e))?
     };
-    let model_pos = Vector3::new(0.0, 0.0, 0.0);
+    let model_pos = rvec3(0.0, 0.0, 0.0);
 
-    let camera = Camera3D::perspective(
+    let mut camera = Camera3D::perspective(
         rvec3(5.0, 5.0, 5.0),
         rvec3(0.0, 0.0, 0.0),
         rvec3(0.0, 1.0, 0.0),
@@ -90,19 +90,20 @@ fn main() -> Result<()> {
     );
     rl.set_target_fps(60);
     while !rl.window_should_close() {
+        rl.update_camera(&mut camera, CameraMode::CAMERA_FREE);
         let mut d = rl.begin_drawing(&thread);
+        d.clear_background(Color::WHITE);
 
         {
             let mut d = d.begin_mode3D(&camera);
 
-            d.draw_model(&model, model_pos, 1.0, Color::BLACK);
-
+            // d.draw_cube_v(rvec3(0.0, 0.0, 0.0), rvec3(2.0, 2.0, 2.0), Color::RED);
             d.draw_grid(10, 1.0);
+            d.draw_model_wires(&model, model_pos, 1.0, Color::BLACK);
         }
 
-        d.clear_background(Color::WHITE);
         d.draw_text("Hello, world!", 12, 12, 20, Color::BLACK);
-        d.draw_texture_rec(&tilemap, rect, Vector2::new(0.0, 0.0), Color::WHITE);
+        d.draw_texture_rec(&tilemap, rect, rvec2(0.0, 0.0), Color::WHITE);
     }
     Ok(())
 }
