@@ -8,8 +8,26 @@ struct Block {
     back: u32,
     left: u32,
     right: u32,
-    up: u32,
-    down: u32,
+    top: u32,
+    bottom: u32,
+}
+
+impl Block {
+    pub fn new(front: u32, back: u32, left: u32, right: u32, top: u32, bottom: u32) -> Self {
+        Self {
+            front,
+            back,
+            left,
+            right,
+            top,
+            bottom,
+        }
+    }
+
+    pub fn generate_mesh(position: Vector3) -> Mesh {
+        let mut mesh = allocate_mesh(2 * 6, 8);
+        mesh
+    }
 }
 
 fn allocate_mesh(triangle_count: usize, vertex_count: usize) -> Mesh {
@@ -18,8 +36,8 @@ fn allocate_mesh(triangle_count: usize, vertex_count: usize) -> Mesh {
         Mesh::from_raw(ffi::Mesh {
             vertexCount: vertex_count as i32,
             triangleCount: triangle_count as i32,
-            vertices: ffi::MemAlloc((size_of::<f32>() * 3 * vertex_count * 8) as u32).cast(),
-            normals: ffi::MemAlloc((size_of::<f32>() * 3 * vertex_count * 8) as u32).cast(),
+            vertices: ffi::MemAlloc((size_of::<[f32; 3]>() * vertex_count * 8) as u32).cast(),
+            normals: ffi::MemAlloc((size_of::<[f32; 3]>() * vertex_count * 8) as u32).cast(),
             texcoords: ffi::MemAlloc((size_of::<[f32; 2]>() * vertex_count * 8) as u32).cast(),
             ..zeroed
         })
@@ -37,28 +55,34 @@ fn gen_triangle_mesh() -> Mesh {
     mesh.normals_mut()[0].x = 0.0;
     mesh.normals_mut()[0].y = 1.0;
     mesh.normals_mut()[0].z = 0.0;
-    // mesh.texcoords[0] = 0;
-    // mesh.textcoords_mut()[1] = 0;
+    unsafe {
+        *mesh.texcoords.add(0) = 0.0;
+        *mesh.texcoords.add(1) = 0.0;
+    }
 
-    // Vertex at (1, 0, 2)
+    // Vertex at (1, 0, 0)
     mesh.vertices_mut()[1].x = 1.0;
     mesh.vertices_mut()[1].y = 0.0;
-    mesh.vertices_mut()[1].z = 2.0;
+    mesh.vertices_mut()[1].z = 0.0;
     mesh.normals_mut()[1].x = 0.0;
     mesh.normals_mut()[1].y = 1.0;
     mesh.normals_mut()[1].z = 0.0;
-    // mesh.texcoords[2] = 0.5f;
-    // mesh.texcoords[3] = 1.0f;
+    unsafe {
+        *mesh.texcoords.add(2) = TILE_WIDTH / 160.0;
+        *mesh.texcoords.add(3) = 0.0;
+    }
 
-    // // Vertex at (2, 0, 0)
-    mesh.vertices_mut()[2].x = 2.0;
-    mesh.vertices_mut()[2].y = 0.0;
+    // // Vertex at (0, 1, 0)
+    mesh.vertices_mut()[2].x = 0.0;
+    mesh.vertices_mut()[2].y = 1.0;
     mesh.vertices_mut()[2].z = 0.0;
     mesh.normals_mut()[2].x = 0.0;
     mesh.normals_mut()[2].y = 1.0;
     mesh.normals_mut()[2].z = 0.0;
-    // mesh.texcoords[4] = 1;
-    // mesh.texcoords[5] = 0;
+    unsafe {
+        *mesh.texcoords.add(4) = 0.0;
+        *mesh.texcoords.add(5) = TILE_WIDTH / 256.0;
+    }
 
     // Upload mesh data from CPU (RAM) to GPU (VRAM) memory
     unsafe {
@@ -77,8 +101,12 @@ fn main() -> Result<()> {
 
     let mesh = gen_triangle_mesh();
     let model = unsafe {
-        rl.load_model_from_mesh(&thread, mesh.make_weak())
-            .map_err(|e| anyhow!(e))?
+        let mut model = rl
+            .load_model_from_mesh(&thread, mesh.make_weak())
+            .map_err(|e| anyhow!(e))?;
+        model.materials_mut()[0].maps_mut()[MaterialMapIndex::MATERIAL_MAP_ALBEDO as usize]
+            .texture = *tilemap.as_ref();
+        model
     };
     let model_pos = rvec3(0.0, 0.0, 0.0);
 
@@ -95,11 +123,11 @@ fn main() -> Result<()> {
         d.clear_background(Color::WHITE);
 
         {
-            let mut d = d.begin_mode3D(&camera);
+            let mut d = d.begin_mode3D(camera);
 
             // d.draw_cube_v(rvec3(0.0, 0.0, 0.0), rvec3(2.0, 2.0, 2.0), Color::RED);
             d.draw_grid(10, 1.0);
-            d.draw_model_wires(&model, model_pos, 1.0, Color::BLACK);
+            d.draw_model(&model, model_pos, 1.0, Color::WHITE);
         }
 
         d.draw_text("Hello, world!", 12, 12, 20, Color::BLACK);
