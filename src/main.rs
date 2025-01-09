@@ -184,7 +184,7 @@ fn setup(
     // cube
     commands.spawn((
         Mesh3d(meshes.add(Block::new(
-            game_resources.texture_map["coral_block_pore_bleached.png"],
+            game_resources.texture_map["grass_side.png"],
             game_resources.texture_map["grass_side.png"],
             game_resources.texture_map["grass_side.png"],
             game_resources.texture_map["grass_side.png"],

@@ -40,58 +40,79 @@ impl Block {
             ([min, max, max], normal, [uv_min.x, uv_min.y]),
         ]
     }
+
+    fn build_back_face(&self) -> [([f32; 3], [f32; 3], [f32; 2]); 4] {
+        let normal = [0.0, 0.0, -1.0];
+        let (min, max) = (-self.width, self.width);
+        let (uv_min, uv_max) = (self.back.min, self.back.max);
+        [
+            ([min, max, min], normal, [uv_max.x, uv_min.y]),
+            ([max, max, min], normal, [uv_min.x, uv_min.y]),
+            ([max, min, min], normal, [uv_min.x, uv_max.y]),
+            ([min, min, min], normal, [uv_max.x, uv_max.y]),
+        ]
+    }
+    fn build_right_face(&self) -> [([f32; 3], [f32; 3], [f32; 2]); 4] {
+        let normal = [1.0, 0.0, 0.0];
+        let (min, max) = (-self.width, self.width);
+        let (uv_min, uv_max) = (self.right.min, self.right.max);
+        [
+            ([max, min, min], normal, [uv_max.x, uv_max.y]),
+            ([max, max, min], normal, [uv_max.x, uv_min.y]),
+            ([max, max, max], normal, [uv_min.x, uv_min.y]),
+            ([max, min, max], normal, [uv_min.x, uv_max.y]),
+        ]
+    }
+    fn build_left_face(&self) -> [([f32; 3], [f32; 3], [f32; 2]); 4] {
+        let normal = [-1.0, 0.0, 0.0];
+        let (min, max) = (-self.width, self.width);
+        let (uv_min, uv_max) = (self.left.min, self.left.max);
+        [
+            ([min, min, max], normal, [uv_max.x, uv_max.y]),
+            ([min, max, max], normal, [uv_max.x, uv_min.y]),
+            ([min, max, min], normal, [uv_min.x, uv_min.y]),
+            ([min, min, min], normal, [uv_min.x, uv_max.y]),
+        ]
+    }
+    fn build_top_face(&self) -> [([f32; 3], [f32; 3], [f32; 2]); 4] {
+        let normal = [0.0, 1.0, 0.0];
+        let (min, max) = (-self.width, self.width);
+        let (uv_min, uv_max) = (self.top.min, self.top.max);
+        [
+            ([max, max, min], normal, [uv_max.x, uv_min.y]),
+            ([min, max, min], normal, [uv_min.x, uv_min.y]),
+            ([min, max, max], normal, [uv_min.x, uv_max.y]),
+            ([max, max, max], normal, [uv_max.x, uv_max.y]),
+        ]
+    }
+    fn build_bottom_face(&self) -> [([f32; 3], [f32; 3], [f32; 2]); 4] {
+        let normal = [0.0, -1.0, 0.0];
+        let (min, max) = (-self.width, self.width);
+        let (uv_min, uv_max) = (self.bottom.min, self.bottom.max);
+        [
+            ([max, min, max], normal, [uv_max.x, uv_max.y]),
+            ([min, min, max], normal, [uv_max.x, uv_min.y]),
+            ([min, min, min], normal, [uv_min.x, uv_min.y]),
+            ([max, min, min], normal, [uv_min.x, uv_max.y]),
+        ]
+    }
 }
 
 impl MeshBuilder for Block {
     fn build(&self) -> Mesh {
-        let min = -0.5;
-        let max = 0.5;
+        let vertices = self
+            .build_front_face()
+            .into_iter()
+            .chain(self.build_back_face())
+            .chain(self.build_right_face())
+            .chain(self.build_left_face())
+            .chain(self.build_top_face())
+            .chain(self.build_bottom_face())
+            .collect::<Vec<_>>();
 
-        // Suppose Y-up right hand, and camera look from +Z to -Z
-        let vertices_other = &[
-            // Back
-            ([min, max, min], [0.0, 0.0, -1.0], [1.0, 0.0]),
-            ([max, max, min], [0.0, 0.0, -1.0], [0.0, 0.0]),
-            ([max, min, min], [0.0, 0.0, -1.0], [0.0, 1.0]),
-            ([min, min, min], [0.0, 0.0, -1.0], [1.0, 1.0]),
-            // Right
-            ([max, min, min], [1.0, 0.0, 0.0], [0.0, 0.0]),
-            ([max, max, min], [1.0, 0.0, 0.0], [1.0, 0.0]),
-            ([max, max, max], [1.0, 0.0, 0.0], [1.0, 1.0]),
-            ([max, min, max], [1.0, 0.0, 0.0], [0.0, 1.0]),
-            // Left
-            ([min, min, max], [-1.0, 0.0, 0.0], [1.0, 0.0]),
-            ([min, max, max], [-1.0, 0.0, 0.0], [0.0, 0.0]),
-            ([min, max, min], [-1.0, 0.0, 0.0], [0.0, 1.0]),
-            ([min, min, min], [-1.0, 0.0, 0.0], [1.0, 1.0]),
-            // Top
-            ([max, max, min], [0.0, 1.0, 0.0], [1.0, 0.0]),
-            ([min, max, min], [0.0, 1.0, 0.0], [0.0, 0.0]),
-            ([min, max, max], [0.0, 1.0, 0.0], [0.0, 1.0]),
-            ([max, max, max], [0.0, 1.0, 0.0], [1.0, 1.0]),
-            // Bottom
-            ([max, min, max], [0.0, -1.0, 0.0], [0.0, 0.0]),
-            ([min, min, max], [0.0, -1.0, 0.0], [1.0, 0.0]),
-            ([min, min, min], [0.0, -1.0, 0.0], [1.0, 1.0]),
-            ([max, min, min], [0.0, -1.0, 0.0], [0.0, 1.0]),
-        ];
-        let vertices = self.build_front_face();
-
-        let positions: Vec<_> = vertices
-            .iter()
-            .chain(vertices_other)
-            .map(|(p, _, _)| *p)
-            .collect();
-        let normals: Vec<_> = vertices
-            .iter()
-            .chain(vertices_other)
-            .map(|(_, n, _)| *n)
-            .collect();
-        let uvs: Vec<_> = vertices
-            .iter()
-            .chain(vertices_other)
-            .map(|(_, _, uv)| *uv)
-            .collect();
+        let positions: Vec<_> = vertices.iter().map(|(p, _, _)| *p).collect();
+        let normals: Vec<_> = vertices.iter().map(|(_, n, _)| *n).collect();
+        let uvs: Vec<_> = vertices.iter().map(|(_, _, uv)| *uv).collect();
 
         let indices = Indices::U32(vec![
             0, 1, 2, 2, 3, 0, // front
