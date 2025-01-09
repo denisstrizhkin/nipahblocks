@@ -3,6 +3,7 @@ use bevy::{
     asset::LoadedFolder,
     image::ImageSampler,
     input::mouse::AccumulatedMouseMotion,
+    pbr::wireframe::{WireframeConfig, WireframePlugin},
     prelude::*,
     render::{
         settings::{RenderCreation, WgpuFeatures, WgpuSettings},
@@ -15,9 +16,6 @@ mod block;
 use block::Block;
 
 const BLOCK_TEXTURES_DIR: &str = "../assets/textures/blocks";
-const TILEMAP_COLUMNS: u32 = 10;
-const TILEMAP_ROWS: u32 = 16;
-const TILE_WIDTH: u32 = 16;
 
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq, States)]
 enum GameState {
@@ -62,19 +60,32 @@ impl Default for CameraSensitivity {
 
 fn main() {
     App::new()
-        .add_plugins(DefaultPlugins.set(RenderPlugin {
-            render_creation: RenderCreation::Automatic(WgpuSettings {
-                features: WgpuFeatures::POLYGON_MODE_LINE,
+        .add_plugins((
+            DefaultPlugins.set(RenderPlugin {
+                render_creation: RenderCreation::Automatic(WgpuSettings {
+                    features: WgpuFeatures::POLYGON_MODE_LINE,
+                    ..default()
+                }),
                 ..default()
             }),
-            ..default()
-        }))
+            WireframePlugin,
+        ))
         .init_state::<GameState>()
         .add_systems(OnEnter(GameState::LoadingAssets), load_assets)
-        .add_systems(Update, loading.run_if(in_state(GameState::LoadingAssets)))
-        .add_systems(OnEnter(GameState::InGame), setup_resources)
-        .add_systems(Startup, (spawn_player, setup))
-        .add_systems(Update, move_player)
+        .add_systems(
+            Update,
+            loading_assets.run_if(in_state(GameState::LoadingAssets)),
+        )
+        .add_systems(OnExit(GameState::LoadingAssets), setup_resources)
+        .add_systems(
+            Startup,
+            (spawn_player, setup).run_if(in_state(GameState::InGame)),
+        )
+        .add_systems(Update, move_player.run_if(in_state(GameState::InGame)))
+        .insert_resource(WireframeConfig {
+            global: true,
+            default_color: Color::WHITE,
+        })
         .run();
 }
 
@@ -84,7 +95,7 @@ fn load_assets(mut commands: Commands, asset_server: Res<AssetServer>) {
     });
 }
 
-fn loading(
+fn loading_assets(
     mut next_state: ResMut<NextState<GameState>>,
     game_assets: Res<GameAssets>,
     mut events: EventReader<AssetEvent<LoadedFolder>>,
@@ -159,12 +170,21 @@ fn setup(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
+    game_resources: Res<GameResources>,
 ) {
     // cube
     commands.spawn((
-        Mesh3d(meshes.add(Block::new(0, 0, 0, 0, 0, 0))),
+        Mesh3d(meshes.add(Block::new(
+            game_resources.texture_map["dirt.png"],
+            game_resources.texture_map["dirt.png"],
+            game_resources.texture_map["dirt.png"],
+            game_resources.texture_map["dirt.png"],
+            game_resources.texture_map["dirt.png"],
+            game_resources.texture_map["dirt.png"],
+        ))),
         MeshMaterial3d(materials.add(Color::BLACK)),
     ));
+    info!("Rendered a cube");
     // light
     commands.spawn((
         PointLight {
@@ -193,6 +213,14 @@ fn spawn_player(mut commands: Commands) {
             ));
         });
 }
+
+// fn update_hud(player_q: Query<&Transform, With<Player>>, mut text: Single<&mut Text, With<Hud>>) {
+//     let Ok(transform) = player_q.get_single() else {
+//         return;
+//     };
+//     let (x, y, z) = transform.translation.into();
+//     ***text = format!("position: {x:0.2}, {y:0.2}, {z:0.2}");
+// }
 
 fn move_player(
     time: Res<Time>,

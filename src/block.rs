@@ -1,8 +1,11 @@
 use bevy::{
     asset::RenderAssetUsages,
+    math::Vec2,
     prelude::{Mesh, MeshBuilder, Meshable},
     render::mesh::{Indices, PrimitiveTopology},
 };
+
+const TEXTURE_SIZE: u32 = 16;
 
 pub struct Block {
     front: u32,
@@ -24,6 +27,27 @@ impl Block {
             bottom,
         }
     }
+
+    fn get_uvs(face: u32) -> (f32, f32) {
+        let face = face as f32;
+        let size = TEXTURE_SIZE as f32;
+        let min = face / size;
+        let max = (face + 1.0) / size;
+        (min, max)
+    }
+
+    fn build_front_face(&self) -> [([f32; 3], [f32; 3], [f32; 2]); 4] {
+        let min = -0.5;
+        let max = 0.5;
+        let normal = [0.0, 0.0, 1.0];
+        let (uv_min, uv_max) = Block::get_uvs(self.front);
+        [
+            ([min, min, max], normal, [0.0, 0.0]),
+            ([max, min, max], normal, [1.0, 0.0]),
+            ([max, max, max], normal, [1.0, 1.0]),
+            ([min, max, max], normal, [0.0, 1.0]),
+        ]
+    }
 }
 
 impl MeshBuilder for Block {
@@ -32,12 +56,7 @@ impl MeshBuilder for Block {
         let max = 1.0_f32;
 
         // Suppose Y-up right hand, and camera look from +Z to -Z
-        let vertices = &[
-            // Front
-            ([min, min, max], [0.0, 0.0, 1.0], [0.0, 0.0]),
-            ([max, min, max], [0.0, 0.0, 1.0], [1.0, 0.0]),
-            ([max, max, max], [0.0, 0.0, 1.0], [1.0, 1.0]),
-            ([min, max, max], [0.0, 0.0, 1.0], [0.0, 1.0]),
+        let vertices_other = &[
             // Back
             ([min, max, min], [0.0, 0.0, -1.0], [1.0, 0.0]),
             ([max, max, min], [0.0, 0.0, -1.0], [0.0, 0.0]),
@@ -64,10 +83,23 @@ impl MeshBuilder for Block {
             ([min, min, min], [0.0, -1.0, 0.0], [1.0, 1.0]),
             ([max, min, min], [0.0, -1.0, 0.0], [0.0, 1.0]),
         ];
+        let vertices = self.build_front_face();
 
-        let positions: Vec<_> = vertices.iter().map(|(p, _, _)| *p).collect();
-        let normals: Vec<_> = vertices.iter().map(|(_, n, _)| *n).collect();
-        let uvs: Vec<_> = vertices.iter().map(|(_, _, uv)| *uv).collect();
+        let positions: Vec<_> = vertices
+            .iter()
+            .chain(vertices_other)
+            .map(|(p, _, _)| *p)
+            .collect();
+        let normals: Vec<_> = vertices
+            .iter()
+            .chain(vertices_other)
+            .map(|(_, n, _)| *n)
+            .collect();
+        let uvs: Vec<_> = vertices
+            .iter()
+            .chain(vertices_other)
+            .map(|(_, _, uv)| *uv)
+            .collect();
 
         let indices = Indices::U32(vec![
             0, 1, 2, 2, 3, 0, // front
