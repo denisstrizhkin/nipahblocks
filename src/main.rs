@@ -32,7 +32,7 @@ struct GameAssets {
 #[derive(Debug, Resource)]
 struct GameResources {
     texture_atlas: Handle<Image>,
-    texture_map: HashMap<String, u32>,
+    texture_map: HashMap<String, Rect>,
     material: Handle<StandardMaterial>,
 }
 
@@ -118,7 +118,7 @@ fn setup_resources(
         .iter()
         .try_fold(
             (
-                HashMap::<String, u32>::new(),
+                HashMap::<String, AssetId<Image>>::new(),
                 TextureAtlasBuilder::default(),
             ),
             |(mut map, mut builder), handle| {
@@ -137,14 +137,27 @@ fn setup_resources(
                 if map.contains_key(path.as_ref()) {
                     return Err(anyhow!("Duplicate image: {path}"));
                 }
-                let index = map.len();
-                map.insert(path.to_string(), index as u32);
+                map.insert(path.to_string(), id);
 
-                info!("Loaded texture {path} into atlas at {index}");
+                info!("Loaded texture {path} into atlas at {id}");
                 anyhow::Ok((map, builder))
             },
         )?;
-    let (_layout, _sources, mut image) = layout_builder.build()?;
+    let (layout, sources, mut image) = layout_builder.build()?;
+    let texture_map = texture_map
+        .into_iter()
+        .fold(HashMap::new(), |mut map, (key, id)| {
+            let urect = sources.texture_rect(&layout, id).unwrap();
+            let size = layout.size;
+            let rect = Rect::new(
+                urect.min.x as f32 / size.x as f32,
+                urect.min.y as f32 / size.y as f32,
+                urect.max.x as f32 / size.x as f32,
+                urect.max.y as f32 / size.y as f32,
+            );
+            map.insert(key, rect);
+            map
+        });
     image.sampler = ImageSampler::nearest();
     let texture_atlas = images.add(image);
     let material = materials.add(StandardMaterial {
@@ -166,13 +179,12 @@ fn setup_resources(
 fn setup(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
     game_resources: Res<GameResources>,
 ) {
     // cube
     commands.spawn((
         Mesh3d(meshes.add(Block::new(
-            game_resources.texture_map["grass_side.png"],
+            game_resources.texture_map["coral_block_pore_bleached.png"],
             game_resources.texture_map["grass_side.png"],
             game_resources.texture_map["grass_side.png"],
             game_resources.texture_map["grass_side.png"],

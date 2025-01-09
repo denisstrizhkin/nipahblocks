@@ -1,24 +1,23 @@
 use bevy::{
     asset::RenderAssetUsages,
-    math::Vec2,
-    prelude::{Mesh, MeshBuilder, Meshable},
+    prelude::*,
     render::mesh::{Indices, PrimitiveTopology},
 };
 
 const TEXTURE_SIZE: u32 = 16;
 
 pub struct Block {
-    front: u32,
-    back: u32,
-    left: u32,
-    right: u32,
-    top: u32,
-    bottom: u32,
+    front: Rect,
+    back: Rect,
+    left: Rect,
+    right: Rect,
+    top: Rect,
+    bottom: Rect,
     width: f32,
 }
 
 impl Block {
-    pub fn new(front: u32, back: u32, left: u32, right: u32, top: u32, bottom: u32) -> Self {
+    pub fn new(front: Rect, back: Rect, left: Rect, right: Rect, top: Rect, bottom: Rect) -> Self {
         Self {
             front,
             back,
@@ -30,18 +29,10 @@ impl Block {
         }
     }
 
-    fn get_uvs(face: u32) -> (Vec2, Vec2) {
-        let pos = Vec2::X * face as f32;
-        let size = TEXTURE_SIZE as f32;
-        let min = pos / size;
-        let max = (pos + Vec2::ONE) / size;
-        (min, max)
-    }
-
     fn build_front_face(&self) -> [([f32; 3], [f32; 3], [f32; 2]); 4] {
         let normal = [0.0, 0.0, 1.0];
         let (min, max) = (-self.width, self.width);
-        let (uv_min, uv_max) = Block::get_uvs(self.front);
+        let (uv_min, uv_max) = (self.front.min, self.front.max);
         [
             ([min, min, max], normal, [uv_min.x, uv_max.y]),
             ([max, min, max], normal, [uv_max.x, uv_max.y]),
