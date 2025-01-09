@@ -1,20 +1,30 @@
-use anyhow::{anyhow, Result};
+use anyhow::anyhow;
 use bevy::{
     asset::LoadedFolder,
     image::ImageSampler,
     input::mouse::AccumulatedMouseMotion,
-    pbr::wireframe::{Wireframe, WireframeColor},
     prelude::*,
+    render::{
+        settings::{RenderCreation, WgpuFeatures, WgpuSettings},
+        RenderPlugin,
+    },
 };
 use std::{collections::HashMap, f32::consts::FRAC_PI_2};
 
 mod block;
 use block::Block;
 
-const TILEMAP_PATH: &str = "assets/tilemap.png";
+const BLOCK_TEXTURES_DIR: &str = "../assets/textures/blocks";
 const TILEMAP_COLUMNS: u32 = 10;
 const TILEMAP_ROWS: u32 = 16;
 const TILE_WIDTH: u32 = 16;
+
+#[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq, States)]
+enum GameState {
+    #[default]
+    LoadingAssets,
+    InGame,
+}
 
 #[derive(Debug, Resource)]
 struct GameAssets {
@@ -52,9 +62,17 @@ impl Default for CameraSensitivity {
 
 fn main() {
     App::new()
-        .add_plugins(DefaultPlugins)
-        .add_systems(Startup, load_assets)
-        .add_systems(Startup, setup_resources)
+        .add_plugins(DefaultPlugins.set(RenderPlugin {
+            render_creation: RenderCreation::Automatic(WgpuSettings {
+                features: WgpuFeatures::POLYGON_MODE_LINE,
+                ..default()
+            }),
+            ..default()
+        }))
+        .init_state::<GameState>()
+        .add_systems(OnEnter(GameState::LoadingAssets), load_assets)
+        .add_systems(Update, loading.run_if(in_state(GameState::LoadingAssets)))
+        .add_systems(OnEnter(GameState::InGame), setup_resources)
         .add_systems(Startup, (spawn_player, setup))
         .add_systems(Update, move_player)
         .run();
@@ -62,8 +80,20 @@ fn main() {
 
 fn load_assets(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.insert_resource(GameAssets {
-        block_textures: asset_server.load_folder("textures"),
+        block_textures: asset_server.load_folder(BLOCK_TEXTURES_DIR),
     });
+}
+
+fn loading(
+    mut next_state: ResMut<NextState<GameState>>,
+    game_assets: Res<GameAssets>,
+    mut events: EventReader<AssetEvent<LoadedFolder>>,
+) {
+    for event in events.read() {
+        if event.is_loaded_with_dependencies(&game_assets.block_textures) {
+            next_state.set(GameState::InGame);
+        }
+    }
 }
 
 fn setup_resources(
@@ -72,7 +102,7 @@ fn setup_resources(
     mut materials: ResMut<Assets<StandardMaterial>>,
     game_assets: Res<GameAssets>,
     loaded_folders: Res<Assets<LoadedFolder>>,
-) -> Result<()> {
+) -> Result {
     let (texture_map, mut layout_builder) = loaded_folders
         .get(&game_assets.block_textures)
         .ok_or(anyhow!("Couldn't load block textures folder"))?
@@ -134,7 +164,6 @@ fn setup(
     commands.spawn((
         Mesh3d(meshes.add(Block::new(0, 0, 0, 0, 0, 0))),
         MeshMaterial3d(materials.add(Color::BLACK)),
-        Wireframe,
     ));
     // light
     commands.spawn((

@@ -6,7 +6,7 @@ edition = "2021"
 [dependencies]
 anyhow = "1.0.95"
 clap = "4.5.23"
-bevy = { version = "0.15.0", default-features = false, features = [
+bevy = {  git = "https://github.com/bevyengine/bevy.git", version = "0.16.0-dev", rev = "020d082617c9c61ddd78b8ced84f758db51a2bf9", default-features = false, features = [
     "bevy_mesh_picking_backend",
     "bevy_pbr",
     "bevy_picking",
