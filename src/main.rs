@@ -77,10 +77,7 @@ fn main() {
             loading_assets.run_if(in_state(GameState::LoadingAssets)),
         )
         .add_systems(OnExit(GameState::LoadingAssets), setup_resources)
-        .add_systems(
-            Startup,
-            (spawn_player, setup).run_if(in_state(GameState::InGame)),
-        )
+        .add_systems(OnEnter(GameState::InGame), (spawn_player, setup))
         .add_systems(Update, move_player.run_if(in_state(GameState::InGame)))
         .insert_resource(WireframeConfig {
             global: true,
@@ -175,16 +172,29 @@ fn setup(
     // cube
     commands.spawn((
         Mesh3d(meshes.add(Block::new(
-            game_resources.texture_map["dirt.png"],
-            game_resources.texture_map["dirt.png"],
-            game_resources.texture_map["dirt.png"],
-            game_resources.texture_map["dirt.png"],
-            game_resources.texture_map["dirt.png"],
+            game_resources.texture_map["grass_side.png"],
+            game_resources.texture_map["grass_side.png"],
+            game_resources.texture_map["grass_side.png"],
+            game_resources.texture_map["grass_side.png"],
+            game_resources.texture_map["grass_top.png"],
             game_resources.texture_map["dirt.png"],
         ))),
-        MeshMaterial3d(materials.add(Color::BLACK)),
+        MeshMaterial3d(game_resources.material.clone()),
     ));
     info!("Rendered a cube");
+    // cube
+    commands.spawn((
+        Mesh3d(meshes.add(Block::new(
+            game_resources.texture_map["grass_side.png"],
+            game_resources.texture_map["grass_side.png"],
+            game_resources.texture_map["grass_side.png"],
+            game_resources.texture_map["grass_side.png"],
+            game_resources.texture_map["grass_top.png"],
+            game_resources.texture_map["dirt.png"],
+        ))),
+        MeshMaterial3d(game_resources.material.clone()),
+        Transform::from_xyz(0.0, -2.0, 0.0),
+    ));
     // light
     commands.spawn((
         PointLight {

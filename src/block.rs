@@ -14,6 +14,7 @@ pub struct Block {
     right: u32,
     top: u32,
     bottom: u32,
+    width: f32,
 }
 
 impl Block {
@@ -25,35 +26,35 @@ impl Block {
             right,
             top,
             bottom,
+            width: 0.5,
         }
     }
 
-    fn get_uvs(face: u32) -> (f32, f32) {
-        let face = face as f32;
+    fn get_uvs(face: u32) -> (Vec2, Vec2) {
+        let pos = Vec2::X * face as f32;
         let size = TEXTURE_SIZE as f32;
-        let min = face / size;
-        let max = (face + 1.0) / size;
+        let min = pos / size;
+        let max = (pos + Vec2::ONE) / size;
         (min, max)
     }
 
     fn build_front_face(&self) -> [([f32; 3], [f32; 3], [f32; 2]); 4] {
-        let min = -0.5;
-        let max = 0.5;
         let normal = [0.0, 0.0, 1.0];
+        let (min, max) = (-self.width, self.width);
         let (uv_min, uv_max) = Block::get_uvs(self.front);
         [
-            ([min, min, max], normal, [0.0, 0.0]),
-            ([max, min, max], normal, [1.0, 0.0]),
-            ([max, max, max], normal, [1.0, 1.0]),
-            ([min, max, max], normal, [0.0, 1.0]),
+            ([min, min, max], normal, [uv_min.x, uv_max.y]),
+            ([max, min, max], normal, [uv_max.x, uv_max.y]),
+            ([max, max, max], normal, [uv_max.x, uv_min.y]),
+            ([min, max, max], normal, [uv_min.x, uv_min.y]),
         ]
     }
 }
 
 impl MeshBuilder for Block {
     fn build(&self) -> Mesh {
-        let min = 0.0_f32;
-        let max = 1.0_f32;
+        let min = -0.5;
+        let max = 0.5;
 
         // Suppose Y-up right hand, and camera look from +Z to -Z
         let vertices_other = &[
