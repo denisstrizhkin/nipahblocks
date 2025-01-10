@@ -1,0 +1,31 @@
+{
+  "blocks": [
+    {
+      "name": "dirt",
+      "front": "dirt.png",
+      "back": "dirt.png",
+      "left": "dirt.png",
+      "right": "dirt.png",
+      "top": "dirt.png",
+      "bottom": "dirt.png"
+    },
+    {
+      "name": "dirt_grass",
+      "front": "grass_side.png",
+      "back": "grass_side.png",
+      "left": "grass_side.png",
+      "right": "grass_side.png",
+      "top": "grass_top.png",
+      "bottom": "dirt.png"
+    },
+    {
+      "name": "stone",
+      "front": "stone_generic.png",
+      "back": "stone_generic.png",
+      "left": "stone_generic.png",
+      "right": "stone_generic.png",
+      "top": "stone_generic.png",
+      "bottom": "stone_generic.png"
+    },
+  ] 
+}

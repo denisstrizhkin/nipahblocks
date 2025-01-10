@@ -2,7 +2,7 @@ use anyhow::anyhow;
 use bevy::{
     asset::LoadedFolder,
     image::ImageSampler,
-    input::mouse::AccumulatedMouseMotion,
+    input::{keyboard, mouse::AccumulatedMouseMotion},
     pbr::wireframe::{WireframeConfig, WireframePlugin},
     prelude::*,
     render::{
@@ -13,8 +13,12 @@ use bevy::{
 use std::{collections::HashMap, f32::consts::FRAC_PI_2};
 
 mod block;
-use block::Block;
+mod block_registry;
 
+use block::Block;
+use block_registry::BlockInfoRegistry;
+
+const BLOCK_INFO_REGISTRY: &str = "../assets/block_registry.json";
 const BLOCK_TEXTURES_DIR: &str = "../assets/textures/blocks";
 
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq, States)]
@@ -267,19 +271,25 @@ fn move_player(
         transform.rotation = Quat::from_euler(EulerRot::YXZ, yaw, pitch, roll);
     }
     let mut direction = Vec3::ZERO;
-    if keyboard.pressed(KeyCode::ArrowUp) {
+    if keyboard.pressed(KeyCode::ArrowUp) || keyboard.pressed(KeyCode::KeyW) {
         direction += *transform.forward();
     }
-    if keyboard.pressed(KeyCode::ArrowDown) {
+    if keyboard.pressed(KeyCode::ArrowDown) || keyboard.pressed(KeyCode::KeyS) {
         direction += *transform.back();
     }
-    if keyboard.pressed(KeyCode::ArrowLeft) {
+    if keyboard.pressed(KeyCode::ArrowLeft) || keyboard.pressed(KeyCode::KeyA) {
         direction += *transform.left();
     }
-    if keyboard.pressed(KeyCode::ArrowRight) {
+    if keyboard.pressed(KeyCode::ArrowRight) || keyboard.pressed(KeyCode::KeyD) {
         direction += *transform.right();
     }
     direction.y = 0.0;
+    if keyboard.pressed(KeyCode::PageUp) || keyboard.pressed(KeyCode::Space) {
+        direction += *transform.up();
+    }
+    if keyboard.pressed(KeyCode::PageDown) || keyboard.pressed(KeyCode::ControlLeft) {
+        direction += *transform.down();
+    }
     let movement = direction.normalize_or_zero() * player.movement_speed * time.delta_secs();
     transform.translation += movement;
 }

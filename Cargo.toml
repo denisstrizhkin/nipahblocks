@@ -19,3 +19,5 @@ bevy = {  git = "https://github.com/bevyengine/bevy.git", version = "0.16.0-dev"
     "tonemapping_luts",
     "wayland",
 ] }
+serde = { version = "1.0.217", features = [ "derive" ] }
+serde_json = "1.0.135"
