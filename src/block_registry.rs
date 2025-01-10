@@ -2,13 +2,13 @@ use serde::Deserialize;
 
 #[derive(Deserialize, Debug)]
 pub struct BlockInfo {
-    name: String,
-    front: String,
-    back: String,
-    left: String,
-    right: String,
-    top: String,
-    bottom: String,
+    pub name: String,
+    pub front: String,
+    pub back: String,
+    pub left: String,
+    pub right: String,
+    pub top: String,
+    pub bottom: String,
 }
 
 #[derive(Deserialize, Debug)]

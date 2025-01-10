@@ -9,7 +9,7 @@ use bevy::{
         RenderPlugin,
     },
 };
-use std::collections::HashMap;
+use std::{collections::HashMap, fs};
 
 mod block;
 mod block_registry;
@@ -19,7 +19,7 @@ use block::Block;
 use block_registry::BlockInfoRegistry;
 use player::PlayerPlugin;
 
-const BLOCK_INFO_REGISTRY: &str = "../assets/block_registry.json";
+const BLOCK_INFO_REGISTRY: &str = "assets/block_registry.json";
 const BLOCK_TEXTURES_DIR: &str = "../assets/textures/blocks";
 
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq, States)]
@@ -32,6 +32,7 @@ enum GameState {
 #[derive(Debug, Resource)]
 struct GameAssets {
     block_textures: Handle<LoadedFolder>,
+    block_registry_json: String,
 }
 
 #[derive(Debug, Resource)]
@@ -39,6 +40,7 @@ struct GameResources {
     texture_atlas: Handle<Image>,
     texture_map: HashMap<String, Rect>,
     material: Handle<StandardMaterial>,
+    blocks: Vec<Block>,
 }
 
 fn main() {
@@ -69,10 +71,14 @@ fn main() {
         .run();
 }
 
-fn load_assets(mut commands: Commands, asset_server: Res<AssetServer>) {
+fn load_assets(mut commands: Commands, asset_server: Res<AssetServer>) -> Result {
+    let block_textures = asset_server.load_folder(BLOCK_TEXTURES_DIR);
+    let block_registry_json = fs::read_to_string(BLOCK_INFO_REGISTRY)?;
     commands.insert_resource(GameAssets {
-        block_textures: asset_server.load_folder(BLOCK_TEXTURES_DIR),
+        block_textures,
+        block_registry_json,
     });
+    Ok(())
 }
 
 fn loading_assets(
@@ -150,10 +156,27 @@ fn setup_resources(
         reflectance: 0.1,
         ..default()
     });
+    let block_info_registry =
+        serde_json::from_str::<BlockInfoRegistry>(&game_assets.block_registry_json)?;
+    let blocks = block_info_registry
+        .blocks
+        .into_iter()
+        .map(|block_info| {
+            Block::new(
+                texture_map[&block_info.front],
+                texture_map[&block_info.back],
+                texture_map[&block_info.left],
+                texture_map[&block_info.right],
+                texture_map[&block_info.top],
+                texture_map[&block_info.bottom],
+            )
+        })
+        .collect();
     commands.insert_resource(GameResources {
         texture_atlas,
         texture_map,
         material,
+        blocks,
     });
     Ok(())
 }
@@ -166,30 +189,23 @@ fn setup(
 ) {
     // cube
     commands.spawn((
-        Mesh3d(meshes.add(Block::new(
-            game_resources.texture_map["grass_side.png"],
-            game_resources.texture_map["grass_side.png"],
-            game_resources.texture_map["grass_side.png"],
-            game_resources.texture_map["grass_side.png"],
-            game_resources.texture_map["grass_top.png"],
-            game_resources.texture_map["dirt.png"],
-        ))),
+        Mesh3d(meshes.add(game_resources.blocks[0].clone())),
         MeshMaterial3d(game_resources.material.clone()),
+        Transform::from_xyz(0.0, 0.0, 0.0),
     ));
-    info!("Rendered a cube");
     // cube
     commands.spawn((
-        Mesh3d(meshes.add(Block::new(
-            game_resources.texture_map["grass_side.png"],
-            game_resources.texture_map["grass_side.png"],
-            game_resources.texture_map["grass_side.png"],
-            game_resources.texture_map["grass_side.png"],
-            game_resources.texture_map["grass_top.png"],
-            game_resources.texture_map["dirt.png"],
-        ))),
+        Mesh3d(meshes.add(game_resources.blocks[1].clone())),
         MeshMaterial3d(game_resources.material.clone()),
-        Transform::from_xyz(0.0, -2.0, 0.0),
+        Transform::from_xyz(2.0, 0.0, 0.0),
     ));
+    // cube
+    commands.spawn((
+        Mesh3d(meshes.add(game_resources.blocks[2].clone())),
+        MeshMaterial3d(game_resources.material.clone()),
+        Transform::from_xyz(-2.0, 0.0, 0.0),
+    ));
+    info!("Rendered some cubes");
     // light
     commands.spawn((
         PointLight {

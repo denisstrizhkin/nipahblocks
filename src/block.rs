@@ -6,6 +6,7 @@ use bevy::{
 
 const TEXTURE_SIZE: u32 = 16;
 
+#[derive(Debug, Clone)]
 pub struct Block {
     front: Rect,
     back: Rect,
