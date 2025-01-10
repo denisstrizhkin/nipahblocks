@@ -13,10 +13,12 @@ use std::{collections::HashMap, fs};
 
 mod block;
 mod block_registry;
+mod chunk;
 mod player;
 
 use block::Block;
 use block_registry::BlockInfoRegistry;
+use chunk::Chunk;
 use player::PlayerPlugin;
 
 const BLOCK_INFO_REGISTRY: &str = "assets/block_registry.json";
