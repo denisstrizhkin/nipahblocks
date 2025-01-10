@@ -81,11 +81,11 @@ impl MeshBuilder for Chunk<'_> {
                         mesh = merge_mesh(mesh, face_mesh);
                     }
                     if !self.check_at(pos + IVec3::X) {
-                        let face_mesh = block.build_left_face_shifted(shift);
+                        let face_mesh = block.build_right_face_shifted(shift);
                         mesh = merge_mesh(mesh, face_mesh);
                     }
                     if !self.check_at(pos - IVec3::X) {
-                        let face_mesh = block.build_right_face_shifted(shift);
+                        let face_mesh = block.build_left_face_shifted(shift);
                         mesh = merge_mesh(mesh, face_mesh);
                     }
                     if !self.check_at(pos + IVec3::Y) {
