@@ -9,6 +9,7 @@ use bevy::{
         RenderPlugin,
     },
 };
+use rand::RngCore;
 use std::{collections::HashMap, fs};
 
 mod block;
@@ -190,18 +191,35 @@ fn setup(
     game_resources: Res<GameResources>,
 ) {
     // chunk
-    let mut chunk = Chunk::default();
+    let mut chunk1 = Chunk::default();
     for x in 0..16 {
         for y in 0..16 {
             for z in 0..16 {
-                chunk.set_at(UVec3::new(x, y, z), Some(&game_resources.blocks[2]));
+                chunk1.set_at(UVec3::new(x, y, z), Some(&game_resources.blocks[2]));
             }
         }
     }
     commands.spawn((
-        Mesh3d(meshes.add(chunk)),
+        Mesh3d(meshes.add(chunk1)),
         MeshMaterial3d(game_resources.material.clone()),
         Transform::from_xyz(0.0, 0.0, 0.0),
+    ));
+    let mut chunk1 = Chunk::default();
+    let mut rng = rand::thread_rng();
+    for x in 0..16 {
+        for y in 0..16 {
+            for z in 0..16 {
+                let i = (rng.next_u32() % 4) as usize;
+                if i != 3 {
+                    chunk1.set_at(UVec3::new(x, y, z), Some(&game_resources.blocks[i]));
+                }
+            }
+        }
+    }
+    commands.spawn((
+        Mesh3d(meshes.add(chunk1)),
+        MeshMaterial3d(game_resources.material.clone()),
+        Transform::from_xyz(32.0, 0.0, 0.0),
     ));
     // light
     commands.spawn((

@@ -2468,6 +2468,7 @@ dependencies = [
  "anyhow",
  "bevy",
  "clap",
+ "rand",
  "serde",
  "serde_json",
 ]

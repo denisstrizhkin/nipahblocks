@@ -11,7 +11,7 @@ struct Player {
 impl Default for Player {
     fn default() -> Self {
         Self {
-            movement_speed: 5.0,
+            movement_speed: 15.0,
         }
     }
 }
