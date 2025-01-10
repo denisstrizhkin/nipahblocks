@@ -189,25 +189,20 @@ fn setup(
     mut meshes: ResMut<Assets<Mesh>>,
     game_resources: Res<GameResources>,
 ) {
-    // cube
+    // chunk
+    let mut chunk = Chunk::default();
+    for x in 0..16 {
+        for y in 0..16 {
+            for z in 0..16 {
+                chunk.set_at(UVec3::new(x, y, z), Some(&game_resources.blocks[2]));
+            }
+        }
+    }
     commands.spawn((
-        Mesh3d(meshes.add(game_resources.blocks[0].clone())),
+        Mesh3d(meshes.add(chunk)),
         MeshMaterial3d(game_resources.material.clone()),
         Transform::from_xyz(0.0, 0.0, 0.0),
     ));
-    // cube
-    commands.spawn((
-        Mesh3d(meshes.add(game_resources.blocks[1].clone())),
-        MeshMaterial3d(game_resources.material.clone()),
-        Transform::from_xyz(2.0, 0.0, 0.0),
-    ));
-    // cube
-    commands.spawn((
-        Mesh3d(meshes.add(game_resources.blocks[2].clone())),
-        MeshMaterial3d(game_resources.material.clone()),
-        Transform::from_xyz(-2.0, 0.0, 0.0),
-    ));
-    info!("Rendered some cubes");
     // light
     commands.spawn((
         PointLight {
