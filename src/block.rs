@@ -39,7 +39,7 @@ impl Block {
         }
     }
 
-    fn build_front_face_shifted(&self, shift: Vec3) -> Mesh {
+    pub fn build_front_face_shifted(&self, shift: Vec3) -> Mesh {
         let normal = [0.0, 0.0, 1.0];
         let max = shift + self.width;
         let min = shift - self.width;
@@ -61,11 +61,11 @@ impl Block {
         )
     }
 
-    fn build_front_face(&self) -> Mesh {
+    pub fn build_front_face(&self) -> Mesh {
         self.build_front_face_shifted(Vec3::ZERO)
     }
 
-    fn build_back_face_shifted(&self, shift: Vec3) -> Mesh {
+    pub fn build_back_face_shifted(&self, shift: Vec3) -> Mesh {
         let normal = [0.0, 0.0, -1.0];
         let max = shift + self.width;
         let min = shift - self.width;
@@ -87,11 +87,11 @@ impl Block {
         )
     }
 
-    fn build_back_face(&self) -> Mesh {
+    pub fn build_back_face(&self) -> Mesh {
         self.build_back_face_shifted(Vec3::ZERO)
     }
 
-    fn build_right_face_shifted(&self, shift: Vec3) -> Mesh {
+    pub fn build_right_face_shifted(&self, shift: Vec3) -> Mesh {
         let normal = [1.0, 0.0, 0.0];
         let max = shift + self.width;
         let min = shift - self.width;
@@ -113,11 +113,11 @@ impl Block {
         )
     }
 
-    fn build_right_face(&self) -> Mesh {
+    pub fn build_right_face(&self) -> Mesh {
         self.build_right_face_shifted(Vec3::ZERO)
     }
 
-    fn build_left_face_shifted(&self, shift: Vec3) -> Mesh {
+    pub fn build_left_face_shifted(&self, shift: Vec3) -> Mesh {
         let normal = [-1.0, 0.0, 0.0];
         let max = shift + self.width;
         let min = shift - self.width;
@@ -139,11 +139,11 @@ impl Block {
         )
     }
 
-    fn build_left_face(&self) -> Mesh {
+    pub fn build_left_face(&self) -> Mesh {
         self.build_left_face_shifted(Vec3::ZERO)
     }
 
-    fn build_top_face_shifted(&self, shift: Vec3) -> Mesh {
+    pub fn build_top_face_shifted(&self, shift: Vec3) -> Mesh {
         let normal = [0.0, 1.0, 0.0];
         let max = shift + self.width;
         let min = shift - self.width;
@@ -165,11 +165,11 @@ impl Block {
         )
     }
 
-    fn build_top_face(&self) -> Mesh {
+    pub fn build_top_face(&self) -> Mesh {
         self.build_top_face_shifted(Vec3::ZERO)
     }
 
-    fn build_bottom_face_shifted(&self, shift: Vec3) -> Mesh {
+    pub fn build_bottom_face_shifted(&self, shift: Vec3) -> Mesh {
         let normal = [0.0, -1.0, 0.0];
         let max = shift + self.width;
         let min = shift - self.width;
@@ -191,7 +191,7 @@ impl Block {
         )
     }
 
-    fn build_bottom_face(&self) -> Mesh {
+    pub fn build_bottom_face(&self) -> Mesh {
         self.build_bottom_face_shifted(Vec3::ZERO)
     }
 }
