@@ -39,16 +39,17 @@ impl Block {
         }
     }
 
-    fn build_front_face(&self) -> Mesh {
+    fn build_front_face_shifted(&self, shift: Vec3) -> Mesh {
         let normal = [0.0, 0.0, 1.0];
-        let (min, max) = (-self.width, self.width);
+        let max = shift + self.width;
+        let min = shift - self.width;
         let (uv_min, uv_max) = (self.front.min, self.front.max);
         build_face_mesh(
             vec![
-                [min, min, max],
-                [max, min, max],
-                [max, max, max],
-                [min, max, max],
+                [min.x, min.y, max.z],
+                [max.x, min.y, max.z],
+                [max.x, max.y, max.z],
+                [min.x, max.y, max.z],
             ],
             normal,
             vec![
@@ -56,20 +57,103 @@ impl Block {
                 [uv_max.x, uv_max.y],
                 [uv_max.x, uv_min.y],
                 [uv_min.x, uv_min.y],
+            ],
+        )
+    }
+
+    fn build_front_face(&self) -> Mesh {
+        self.build_front_face_shifted(Vec3::ZERO)
+    }
+
+    fn build_back_face_shifted(&self, shift: Vec3) -> Mesh {
+        let normal = [0.0, 0.0, -1.0];
+        let max = shift + self.width;
+        let min = shift - self.width;
+        let (uv_min, uv_max) = (self.back.min, self.back.max);
+        build_face_mesh(
+            vec![
+                [min.x, max.y, min.z],
+                [max.x, max.y, min.z],
+                [max.x, min.y, min.z],
+                [min.x, min.y, min.z],
+            ],
+            normal,
+            vec![
+                [uv_max.x, uv_min.y],
+                [uv_min.x, uv_min.y],
+                [uv_min.x, uv_max.y],
+                [uv_max.x, uv_max.y],
             ],
         )
     }
 
     fn build_back_face(&self) -> Mesh {
-        let normal = [0.0, 0.0, -1.0];
-        let (min, max) = (-self.width, self.width);
-        let (uv_min, uv_max) = (self.back.min, self.back.max);
+        self.build_back_face_shifted(Vec3::ZERO)
+    }
+
+    fn build_right_face_shifted(&self, shift: Vec3) -> Mesh {
+        let normal = [1.0, 0.0, 0.0];
+        let max = shift + self.width;
+        let min = shift - self.width;
+        let (uv_min, uv_max) = (self.right.min, self.right.max);
         build_face_mesh(
             vec![
-                [min, max, min],
-                [max, max, min],
-                [max, min, min],
-                [min, min, min],
+                [max.x, min.y, min.z],
+                [max.x, max.y, min.z],
+                [max.x, max.y, max.z],
+                [max.x, min.y, max.z],
+            ],
+            normal,
+            vec![
+                [uv_max.x, uv_max.y],
+                [uv_max.x, uv_min.y],
+                [uv_min.x, uv_min.y],
+                [uv_min.x, uv_max.y],
+            ],
+        )
+    }
+
+    fn build_right_face(&self) -> Mesh {
+        self.build_right_face_shifted(Vec3::ZERO)
+    }
+
+    fn build_left_face_shifted(&self, shift: Vec3) -> Mesh {
+        let normal = [-1.0, 0.0, 0.0];
+        let max = shift + self.width;
+        let min = shift - self.width;
+        let (uv_min, uv_max) = (self.left.min, self.left.max);
+        build_face_mesh(
+            vec![
+                [min.x, min.y, max.z],
+                [min.x, max.y, max.z],
+                [min.x, max.y, min.z],
+                [min.x, min.y, min.z],
+            ],
+            normal,
+            vec![
+                [uv_max.x, uv_max.y],
+                [uv_max.x, uv_min.y],
+                [uv_min.x, uv_min.y],
+                [uv_min.x, uv_max.y],
+            ],
+        )
+    }
+
+    fn build_left_face(&self) -> Mesh {
+        self.build_left_face_shifted(Vec3::ZERO)
+    }
+
+    fn build_top_face_shifted(&self, shift: Vec3) -> Mesh {
+        let normal = [0.0, 1.0, 0.0];
+        let max = shift + self.width;
+        let min = shift - self.width;
+        let (uv_min, uv_max) = (self.top.min, self.top.max);
+        build_face_mesh(
+            vec![
+                [max.x, max.y, min.z],
+                [min.x, max.y, min.z],
+                [min.x, max.y, max.z],
+                [max.x, max.y, max.z],
             ],
             normal,
             vec![
@@ -81,76 +165,21 @@ impl Block {
         )
     }
 
-    fn build_right_face(&self) -> Mesh {
-        let normal = [1.0, 0.0, 0.0];
-        let (min, max) = (-self.width, self.width);
-        let (uv_min, uv_max) = (self.right.min, self.right.max);
-        build_face_mesh(
-            vec![
-                [max, min, min],
-                [max, max, min],
-                [max, max, max],
-                [max, min, max],
-            ],
-            normal,
-            vec![
-                [uv_max.x, uv_max.y],
-                [uv_max.x, uv_min.y],
-                [uv_min.x, uv_min.y],
-                [uv_min.x, uv_max.y],
-            ],
-        )
-    }
-    fn build_left_face(&self) -> Mesh {
-        let normal = [-1.0, 0.0, 0.0];
-        let (min, max) = (-self.width, self.width);
-        let (uv_min, uv_max) = (self.left.min, self.left.max);
-        build_face_mesh(
-            vec![
-                [min, min, max],
-                [min, max, max],
-                [min, max, min],
-                [min, min, min],
-            ],
-            normal,
-            vec![
-                [uv_max.x, uv_max.y],
-                [uv_max.x, uv_min.y],
-                [uv_min.x, uv_min.y],
-                [uv_min.x, uv_max.y],
-            ],
-        )
-    }
     fn build_top_face(&self) -> Mesh {
-        let normal = [0.0, 1.0, 0.0];
-        let (min, max) = (-self.width, self.width);
-        let (uv_min, uv_max) = (self.top.min, self.top.max);
-        build_face_mesh(
-            vec![
-                [max, max, min],
-                [min, max, min],
-                [min, max, max],
-                [max, max, max],
-            ],
-            normal,
-            vec![
-                [uv_max.x, uv_min.y],
-                [uv_min.x, uv_min.y],
-                [uv_min.x, uv_max.y],
-                [uv_max.x, uv_max.y],
-            ],
-        )
+        self.build_top_face_shifted(Vec3::ZERO)
     }
-    fn build_bottom_face(&self) -> Mesh {
+
+    fn build_bottom_face_shifted(&self, shift: Vec3) -> Mesh {
         let normal = [0.0, -1.0, 0.0];
-        let (min, max) = (-self.width, self.width);
+        let max = shift + self.width;
+        let min = shift - self.width;
         let (uv_min, uv_max) = (self.bottom.min, self.bottom.max);
         build_face_mesh(
             vec![
-                [max, min, max],
-                [min, min, max],
-                [min, min, min],
-                [max, min, min],
+                [max.x, min.y, max.z],
+                [min.x, min.y, max.z],
+                [min.x, min.y, min.z],
+                [max.x, min.y, min.z],
             ],
             normal,
             vec![
@@ -160,6 +189,10 @@ impl Block {
                 [uv_min.x, uv_max.y],
             ],
         )
+    }
+
+    fn build_bottom_face(&self) -> Mesh {
+        self.build_bottom_face_shifted(Vec3::ZERO)
     }
 }
 
