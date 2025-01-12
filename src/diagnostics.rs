@@ -18,20 +18,21 @@ impl Plugin for DiagnosticsPlugin {
     }
 }
 
-fn setup_diagnostics(mut commands: Commands) {
+fn setup_diagnostics(mut commands: Commands, asset_server: Res<AssetServer>) {
+    let font = asset_server.load("fonts/RobotoMono-Regular.ttf");
     // Text with multiple sections
     commands.spawn(Node::default()).with_children(|builder| {
         builder.spawn((
             DiagnosticsText,
             Text::new("Diagnostics:"),
             TextColor(Color::WHITE),
-            TextFont {
-                font_size: 30.0,
-                ..default()
-            },
+            TextFont { font, ..default() },
         ));
     });
+
+    info!("Finished diagnostics setup");
 }
+
 fn update_diagnostics(
     diagnostics: Res<DiagnosticsStore>,
     player_q: Query<&Transform, With<Player>>,

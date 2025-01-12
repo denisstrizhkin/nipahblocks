@@ -65,7 +65,7 @@ impl MeshBuilder for Chunk<'_> {
             .flat_map(|(i, block)| {
                 let pos = index_to_pos(i);
                 let pos = IVec3::new(pos.x as i32, pos.y as i32, pos.z as i32);
-                let shift = Vec3::new(pos.x as f32, pos.y as f32, pos.z as f32) + (Vec3::ONE - 7.5);
+                let shift = Vec3::new(pos.x as f32, pos.y as f32, pos.z as f32) + Vec3::ONE * -7.5;
                 [
                     (!self.check_at(pos + IVec3::Z))
                         .then_some(block.build_front_face_shifted(shift)),
