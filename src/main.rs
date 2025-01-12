@@ -27,7 +27,7 @@ use player::PlayerPlugin;
 
 const BLOCK_INFO_REGISTRY: &str = "assets/block_registry.json";
 const BLOCK_TEXTURES_DIR: &str = "../assets/textures/blocks";
-const SEED: u32 = 123456;
+const SEED: u32 = 66666;
 
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq, States)]
 enum GameState {
@@ -167,6 +167,7 @@ fn setup_resources(
         base_color: Color::WHITE,
         base_color_texture: Some(texture_atlas.clone()),
         perceptual_roughness: 0.97,
+        unlit: true,
         reflectance: 0.1,
         ..default()
     });
@@ -232,15 +233,15 @@ fn setup(
 
 fn generate_chunk<'a>(pos: Vec3, blocks: &'a HashMap<String, Block>) -> Chunk<'a> {
     let noise = noise::Perlin::new(SEED);
-    let scale = 0.025;
+    let scale = 0.015;
     let mut chunk = Chunk::default();
     for x in 0..16 {
         let n_x = x as f64 + pos.x as f64;
         for z in 0..16 {
             let n_z = z as f64 + pos.z as f64;
-            let n_y = (noise.get([n_x * scale, n_z * scale]) * 64.0) as f32;
+            let n_y = (noise.get([n_x * scale, n_z * scale]) * 64.0).round() as i32;
             for y in 0..16 {
-                let d = (n_y - (y as f32 + pos.y)) as i32;
+                let d = n_y - (y as i32 + pos.y.round() as i32);
                 let block = match d {
                     0 => Some(&blocks["grass"]),
                     0..3 => Some(&blocks["dirt"]),
