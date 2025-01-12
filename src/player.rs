@@ -4,7 +4,7 @@ use std::f32::consts::FRAC_PI_2;
 pub struct PlayerPlugin;
 
 #[derive(Debug, Component)]
-struct Player {
+pub struct Player {
     movement_speed: f32,
 }
 

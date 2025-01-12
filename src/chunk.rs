@@ -49,6 +49,10 @@ impl<'a> Chunk<'a> {
         self.at(UVec3::new(pos.x as u32, pos.y as u32, pos.z as u32))
             .is_some()
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.blocks.iter().flatten().count() == 0
+    }
 }
 
 impl MeshBuilder for Chunk<'_> {
@@ -56,13 +60,12 @@ impl MeshBuilder for Chunk<'_> {
         let mut faces = self
             .blocks
             .iter()
-            .copied()
             .enumerate()
             .filter_map(|(i, block)| block.map(|block| (i, block)))
-            .map(|(i, block)| {
+            .flat_map(|(i, block)| {
                 let pos = index_to_pos(i);
                 let pos = IVec3::new(pos.x as i32, pos.y as i32, pos.z as i32);
-                let shift = Vec3::new(pos.x as f32, pos.y as f32, pos.z as f32);
+                let shift = Vec3::new(pos.x as f32, pos.y as f32, pos.z as f32) + (Vec3::ONE - 7.5);
                 [
                     (!self.check_at(pos + IVec3::Z))
                         .then_some(block.build_front_face_shifted(shift)),
@@ -77,8 +80,7 @@ impl MeshBuilder for Chunk<'_> {
                         .then_some(block.build_bottom_face_shifted(shift)),
                 ]
             })
-            .flatten()
-            .filter_map(|face| face);
+            .flatten();
         let mesh = faces.next().unwrap();
         faces.fold(mesh, |mut mesh, face| {
             mesh.merge(&face);

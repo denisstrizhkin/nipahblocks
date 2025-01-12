@@ -15,11 +15,13 @@ use std::{collections::HashMap, fs};
 mod block;
 mod block_registry;
 mod chunk;
+mod diagnostics;
 mod player;
 
 use block::Block;
 use block_registry::BlockInfoRegistry;
 use chunk::Chunk;
+use diagnostics::DiagnosticsPlugin;
 use player::PlayerPlugin;
 
 const BLOCK_INFO_REGISTRY: &str = "assets/block_registry.json";
@@ -56,6 +58,7 @@ fn main() {
                 }),
                 ..default()
             }),
+            DiagnosticsPlugin,
             PlayerPlugin,
             WireframePlugin,
         ))
