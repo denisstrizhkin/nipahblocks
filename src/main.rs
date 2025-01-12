@@ -231,6 +231,12 @@ fn setup(
     ));
 }
 
+fn generate_chunks(blocks: &[Block]) -> Vec<Chunk> {
+    let height = 256 / 16;
+    let width = 256 / 16;
+    todo!()
+}
+
 // fn update_hud(player_q: Query<&Transform, With<Player>>, mut text: Single<&mut Text, With<Hud>>) {
 //     let Ok(transform) = player_q.get_single() else {
 //         return;
