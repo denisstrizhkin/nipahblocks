@@ -8,9 +8,9 @@ use bevy::{
         settings::{RenderCreation, WgpuFeatures, WgpuSettings},
         RenderPlugin,
     },
+    window::PresentMode,
 };
 use noise::NoiseFn;
-use rand::RngCore;
 use std::{collections::HashMap, fs};
 
 mod block;
@@ -44,22 +44,28 @@ struct GameAssets {
 
 #[derive(Debug, Resource)]
 struct GameResources {
-    texture_atlas: Handle<Image>,
-    texture_map: HashMap<String, Rect>,
     material: Handle<StandardMaterial>,
-    blocks: Vec<Block>,
+    blocks: HashMap<String, Block>,
 }
 
 fn main() {
     App::new()
         .add_plugins((
-            DefaultPlugins.set(RenderPlugin {
-                render_creation: RenderCreation::Automatic(WgpuSettings {
-                    features: WgpuFeatures::POLYGON_MODE_LINE,
+            DefaultPlugins
+                .set(RenderPlugin {
+                    render_creation: RenderCreation::Automatic(WgpuSettings {
+                        features: WgpuFeatures::POLYGON_MODE_LINE,
+                        ..default()
+                    }),
+                    ..default()
+                })
+                .set(WindowPlugin {
+                    primary_window: Some(Window {
+                        present_mode: PresentMode::AutoNoVsync,
+                        ..default()
+                    }),
                     ..default()
                 }),
-                ..default()
-            }),
             DiagnosticsPlugin,
             PlayerPlugin,
             WireframePlugin,
@@ -73,7 +79,7 @@ fn main() {
         .add_systems(OnExit(GameState::LoadingAssets), setup_resources)
         .add_systems(OnEnter(GameState::InGame), setup)
         .insert_resource(WireframeConfig {
-            global: true,
+            global: false,
             default_color: Color::WHITE,
         })
         .run();
@@ -170,22 +176,20 @@ fn setup_resources(
         .blocks
         .into_iter()
         .map(|block_info| {
-            Block::new(
-                texture_map[&block_info.front],
-                texture_map[&block_info.back],
-                texture_map[&block_info.left],
-                texture_map[&block_info.right],
-                texture_map[&block_info.top],
-                texture_map[&block_info.bottom],
+            (
+                block_info.name,
+                Block::new(
+                    texture_map[&block_info.front],
+                    texture_map[&block_info.back],
+                    texture_map[&block_info.left],
+                    texture_map[&block_info.right],
+                    texture_map[&block_info.top],
+                    texture_map[&block_info.bottom],
+                ),
             )
         })
         .collect();
-    commands.insert_resource(GameResources {
-        texture_atlas,
-        texture_map,
-        material,
-        blocks,
-    });
+    commands.insert_resource(GameResources { material, blocks });
     Ok(())
 }
 
@@ -196,31 +200,22 @@ fn setup(
     game_resources: Res<GameResources>,
 ) {
     // chunk
-    let chunk_pos = Vec3::new(0.0, 0.0, 0.0);
-    let mut chunk = generate_chunk(chunk_pos, &game_resources.blocks);
-    // commands.spawn((
-    //     Mesh3d(meshes.add(chunk)),
-    //     MeshMaterial3d(game_resources.material.clone()),
-    //     Transform::from_translation(chunk_pos),
-    // ));
-
-    let mut chunk1 = Chunk::default();
-    let mut rng = rand::thread_rng();
-    for x in 0..16 {
-        for y in 0..16 {
-            for z in 0..16 {
-                let i = (rng.next_u32() % 4) as usize;
-                if i != 3 {
-                    chunk1.set_at(UVec3::new(x, y, z), Some(&game_resources.blocks[i]));
+    for x in -8..=8 {
+        for z in -8..=8 {
+            for y in -8..7 {
+                let chunk_pos = Vec3::new((x * 16) as f32, (y * 16) as f32, (z * 16) as f32);
+                let chunk = generate_chunk(chunk_pos, &game_resources.blocks);
+                if !chunk.is_empty() {
+                    commands.spawn((
+                        Mesh3d(meshes.add(chunk)),
+                        MeshMaterial3d(game_resources.material.clone()),
+                        Transform::from_translation(chunk_pos),
+                    ));
                 }
             }
         }
     }
-    commands.spawn((
-        Mesh3d(meshes.add(chunk1)),
-        MeshMaterial3d(game_resources.material.clone()),
-        Transform::from_xyz(32.0, 0.0, 0.0),
-    ));
+
     // light
     commands.spawn((
         PointLight {
@@ -235,19 +230,21 @@ fn setup(
 //     for x in -
 // }
 
-fn generate_chunk<'a>(pos: Vec3, blocks: &'a [Block]) -> Chunk<'a> {
+fn generate_chunk<'a>(pos: Vec3, blocks: &'a HashMap<String, Block>) -> Chunk<'a> {
     let noise = noise::Perlin::new(SEED);
+    let scale = 0.025;
     let mut chunk = Chunk::default();
     for x in 0..16 {
         let n_x = x as f64 + pos.x as f64;
         for z in 0..16 {
             let n_z = z as f64 + pos.z as f64;
-            let n_y = (noise.get([n_x, n_z]) * 64.0) as f32;
-            info!("(x: {x}, z: {z}) noise - y: {n_y:.8}");
+            let n_y = (noise.get([n_x * scale, n_z * scale]) * 64.0) as f32;
             for y in 0..16 {
-                let d = (n_y - y as f32 + pos.y) as u32;
+                let d = (n_y - (y as f32 + pos.y)) as i32;
                 let block = match d {
-                    0 => Some(&blocks[0]),
+                    0 => Some(&blocks["grass"]),
+                    0..3 => Some(&blocks["dirt"]),
+                    0.. => Some(&blocks["stone"]),
                     _ => None,
                 };
                 chunk.set_at(UVec3::new(x, y, z), block);

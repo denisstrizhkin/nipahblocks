@@ -10,7 +10,7 @@
       "bottom": "dirt.png"
     },
     {
-      "name": "dirt_grass",
+      "name": "grass",
       "front": "grass_side.png",
       "back": "grass_side.png",
       "left": "grass_side.png",
