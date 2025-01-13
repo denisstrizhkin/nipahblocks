@@ -11,7 +11,7 @@ use bevy::{
     utils::hashbrown::HashMap,
     window::PresentMode,
 };
-use std::fs;
+use std::{fs, sync::Arc};
 
 mod block;
 mod block_registry;
@@ -44,7 +44,8 @@ struct GameAssets {
 #[derive(Debug, Resource)]
 pub struct GameResources {
     material: Handle<StandardMaterial>,
-    blocks: HashMap<String, Block>,
+    blocks_map: Arc<HashMap<String, usize>>,
+    blocks: Arc<Vec<Block>>,
 }
 
 fn main() {
@@ -67,6 +68,7 @@ fn main() {
                 }),
             DiagnosticsPlugin,
             PlayerPlugin,
+            ChunksPlugin,
             WireframePlugin,
         ))
         .init_state::<GameState>()
@@ -175,8 +177,10 @@ fn setup_resources(
     let blocks = block_info_registry
         .blocks
         .into_iter()
-        .map(|block_info| {
+        .enumerate()
+        .map(|(i, block_info)| {
             (
+                i,
                 block_info.name,
                 Block::new(
                     texture_map[&block_info.front],
@@ -188,34 +192,25 @@ fn setup_resources(
                 ),
             )
         })
+        .collect::<Vec<_>>();
+    let block_map = blocks
+        .iter()
+        .map(|(i, name, _)| (name.clone(), *i))
         .collect();
-    commands.insert_resource(GameResources { material, blocks });
+    let blocks = blocks
+        .iter()
+        .map(|(_, _, block)| block.clone())
+        .collect::<Vec<_>>();
+    commands.insert_resource(GameResources {
+        material,
+        blocks_map: Arc::new(block_map),
+        blocks: Arc::new(blocks),
+    });
     Ok(())
 }
 
 /// set up a simple 3D scene
-fn setup(
-    mut commands: Commands,
-    mut meshes: ResMut<Assets<Mesh>>,
-    game_resources: Res<GameResources>,
-) {
-    // chunk
-    for x in -8..=8 {
-        for z in -8..=8 {
-            for y in -8..7 {
-                let chunk_pos = Vec3::new((x * 16) as f32, (y * 16) as f32, (z * 16) as f32);
-                let chunk = generate_chunk(chunk_pos, &game_resources.blocks);
-                if !chunk.is_empty() {
-                    commands.spawn((
-                        Mesh3d(meshes.add(chunk)),
-                        MeshMaterial3d(game_resources.material.clone()),
-                        Transform::from_translation(chunk_pos),
-                    ));
-                }
-            }
-        }
-    }
-
+fn setup(mut commands: Commands) {
     // light
     commands.spawn((
         PointLight {
@@ -225,15 +220,3 @@ fn setup(
         Transform::from_xyz(4.0, 8.0, 4.0),
     ));
 }
-
-// fn generate_chunks(blocks: &[Block]) -> Vec<Chunk> {
-//     for x in -
-// }
-
-// fn update_hud(player_q: Query<&Transform, With<Player>>, mut text: Single<&mut Text, With<Hud>>) {
-//     let Ok(transform) = player_q.get_single() else {
-//         return;
-//     };
-//     let (x, y, z) = transform.translation.into();
-//     ***text = format!("position: {x:0.2}, {y:0.2}, {z:0.2}");
-// }

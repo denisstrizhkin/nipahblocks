@@ -1,9 +1,10 @@
 use bevy::{prelude::*, utils::hashbrown::HashMap};
 use noise::NoiseFn;
+use std::sync::Arc;
 
 use crate::block::{Block, BLOCK_HALF_SIZE};
 use crate::player::Player;
-use crate::GameResources;
+use crate::{GameResources, GameState};
 
 const CHUNK_SIZE: u32 = 16;
 const CHUNK_LEN: u32 = CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE;
@@ -17,83 +18,97 @@ pub struct ChunksPlugin;
 
 impl Plugin for ChunksPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Startup, setup_chunks_map)
-            .add_systems(Update, update_chunks);
+        app.init_resource::<ChunkMap>()
+            .add_systems(Update, update_chunks.run_if(in_state(GameState::InGame)));
     }
 }
 
-fn setup_chunks_map(game_resources: Res<GameResources>, mut commands: Commands) {
-    commands.insert_resource(ChunkMap::new(&game_resources.blocks));
+fn player_pos_to_chunk_block(pos: Vec3) -> (IVec3, UVec3) {
+    let size = Vec3::ONE * CHUNK_SIZE as f32;
+    let pos = pos - size / 2.0;
+    let chunk_pos = pos.div_euclid(size);
+    let block_pos = pos.rem_euclid(size);
+    (
+        IVec3::new(chunk_pos.x as i32, chunk_pos.y as i32, chunk_pos.z as i32),
+        UVec3::new(block_pos.x as u32, block_pos.y as u32, block_pos.z as u32),
+    )
 }
 
 fn update_chunks(
     mut chunks_map: ResMut<ChunkMap>,
     mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    game_resources: Res<GameResources>,
     player_q: Query<&Transform, With<Player>>,
 ) {
     let Ok(transform) = player_q.get_single() else {
         return;
     };
+    let (chunk_pos, _) = player_pos_to_chunk_block(transform.translation);
+    let radius = DRAW_DISTANCE as i32;
+    for x in -radius..radius {
+        for z in -radius..radius {
+            let chunk_pos = chunk_pos + x * IVec3::X + z * IVec3::Z;
+            if !chunks_map.chunks.contains_key(&chunk_pos) {
+                let chunk_pos_f32 =
+                    Vec3::new(chunk_pos.x as f32, chunk_pos.y as f32, chunk_pos.z as f32);
+                let chunk = generate_chunk(
+                    chunk_pos_f32,
+                    game_resources.blocks_map.clone(),
+                    game_resources.blocks.clone(),
+                );
+                commands.spawn((
+                    Mesh3d(meshes.add(chunk.clone())),
+                    MeshMaterial3d(game_resources.material.clone()),
+                    Transform::from_translation(chunk_pos_f32),
+                ));
+                chunks_map.chunks.insert(chunk_pos, chunk);
+            }
+        }
+    }
 }
 
 #[derive(Debug, Resource)]
-struct ChunkMap<'a> {
-    chunks: HashMap<IVec3, Chunk<'a>>,
-    blocks: HashMap<String, Block>,
+struct ChunkMap {
+    chunks: HashMap<IVec3, Chunk>,
 }
 
-impl<'a> ChunkMap<'a> {
-    fn new(blocks: &HashMap<String, Block>) -> Self {
+impl Default for ChunkMap {
+    fn default() -> Self {
         ChunkMap {
             chunks: HashMap::new(),
-            blocks: blocks.clone(),
         }
     }
+}
 
-    pub fn chunk_at(&'a mut self, pos: Vec3) -> &'a Chunk {
-        let size = Vec3::ONE * CHUNK_SIZE as f32;
-        let pos = pos - size / 2.0;
-        let pos = pos.div_euclid(size);
-        let ipos = IVec3::new(pos.x as i32, pos.y as i32, pos.z as i32);
-        if !self.chunks.contains_key(&ipos) {
-            let chunk = self.generate_chunk(pos);
-            self.chunks.insert(ipos, chunk);
-        }
-        &self.chunks[&ipos]
-    }
+impl ChunkMap {}
 
-    pub fn block_at(&'a mut self, pos: Vec3) -> Option<&'a Block> {
-        let chunk = self.chunk_at(pos);
-        let size = Vec3::ONE * CHUNK_SIZE as f32;
-        let pos = pos - size / 2.0;
-        let pos = pos.rem_euclid(size);
-        let upos = UVec3::new(pos.x as u32, pos.y as u32, pos.z as u32);
-        chunk.at(upos)
-    }
-
-    fn generate_chunk(&self, pos: Vec3) -> Chunk<'a> {
-        let noise = noise::Perlin::new(SEED);
-        let scale = 0.015;
-        let mut chunk = Chunk::default();
-        for x in 0..16 {
-            let n_x = x as f64 + pos.x as f64;
-            for z in 0..16 {
-                let n_z = z as f64 + pos.z as f64;
-                let n_y = (noise.get([n_x * scale, n_z * scale]) * 64.0).round() as i32;
-                for y in 0..16 {
-                    let d = n_y - (y as i32 + pos.y.round() as i32);
-                    let block = match d {
-                        0 => Some(&self.blocks["grass"]),
-                        0..3 => Some(&self.blocks["dirt"]),
-                        0.. => Some(&self.blocks["stone"]),
-                        _ => None,
-                    };
-                    chunk.set_at(UVec3::new(x, y, z), block);
-                }
+fn generate_chunk(
+    pos: Vec3,
+    block_map: Arc<HashMap<String, usize>>,
+    blocks: Arc<Vec<Block>>,
+) -> Chunk {
+    let noise = noise::Perlin::new(SEED);
+    let scale = 0.015;
+    let mut chunk = Chunk::new(blocks);
+    for x in 0..16 {
+        let n_x = x as f64 + pos.x as f64;
+        for z in 0..16 {
+            let n_z = z as f64 + pos.z as f64;
+            let n_y = (noise.get([n_x * scale, n_z * scale]) * 64.0).round() as i32;
+            for y in 0..16 {
+                let d = n_y - (y as i32 + pos.y.round() as i32);
+                let block_id = match d {
+                    0 => Some(block_map["grass"]),
+                    0..3 => Some(block_map["dirt"]),
+                    0.. => Some(block_map["stone"]),
+                    _ => None,
+                };
+                chunk.set_at(UVec3::new(x, y, z), block_id);
             }
         }
-        chunk
     }
+    chunk
 }
 
 fn index_to_pos(i: usize) -> UVec3 {
@@ -105,26 +120,26 @@ fn index_to_pos(i: usize) -> UVec3 {
     UVec3::new(x, y, z)
 }
 
-#[derive(Debug)]
-pub struct Chunk<'a> {
-    blocks: [Option<&'a Block>; CHUNK_LEN as usize],
+#[derive(Debug, Clone)]
+pub struct Chunk {
+    blocks: [Option<usize>; CHUNK_LEN as usize],
+    blocks_info: Arc<Vec<Block>>,
 }
 
-impl Default for Chunk<'_> {
-    fn default() -> Self {
+impl Chunk {
+    fn new(blocks_info: Arc<Vec<Block>>) -> Self {
         Self {
             blocks: [None; CHUNK_LEN as usize],
+            blocks_info,
         }
     }
-}
 
-impl<'a> Chunk<'a> {
-    pub fn at(&self, pos: UVec3) -> Option<&'a Block> {
+    pub fn at(&self, pos: UVec3) -> Option<usize> {
         let i = pos.x * CHUNK_SIZE * CHUNK_SIZE + pos.y * CHUNK_SIZE + pos.z;
         self.blocks[i as usize]
     }
 
-    pub fn set_at(&mut self, pos: UVec3, block: Option<&'a Block>) {
+    pub fn set_at(&mut self, pos: UVec3, block: Option<usize>) {
         let i = pos.x * CHUNK_SIZE * CHUNK_SIZE + pos.y * CHUNK_SIZE + pos.z;
         self.blocks[i as usize] = block;
     }
@@ -148,13 +163,13 @@ impl<'a> Chunk<'a> {
     }
 }
 
-impl MeshBuilder for Chunk<'_> {
+impl MeshBuilder for Chunk {
     fn build(&self) -> Mesh {
         let mut faces = self
             .blocks
             .iter()
             .enumerate()
-            .filter_map(|(i, block)| block.map(|block| (i, block)))
+            .filter_map(|(i, block_id)| block_id.map(|id| (i, &self.blocks_info[id])))
             .flat_map(|(i, block)| {
                 let pos = index_to_pos(i);
                 let pos = IVec3::new(pos.x as i32, pos.y as i32, pos.z as i32);
@@ -183,10 +198,10 @@ impl MeshBuilder for Chunk<'_> {
     }
 }
 
-impl<'a> Meshable for Chunk<'a> {
-    type Output = Chunk<'a>;
+impl Meshable for Chunk {
+    type Output = Chunk;
 
     fn mesh(&self) -> Self::Output {
-        Self { ..*self }
+        self.clone()
     }
 }
