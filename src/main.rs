@@ -8,10 +8,10 @@ use bevy::{
         settings::{RenderCreation, WgpuFeatures, WgpuSettings},
         RenderPlugin,
     },
+    utils::hashbrown::HashMap,
     window::PresentMode,
 };
-use noise::NoiseFn;
-use std::{collections::HashMap, fs};
+use std::fs;
 
 mod block;
 mod block_registry;
@@ -21,13 +21,12 @@ mod player;
 
 use block::Block;
 use block_registry::BlockInfoRegistry;
-use chunk::Chunk;
+use chunk::ChunksPlugin;
 use diagnostics::DiagnosticsPlugin;
 use player::PlayerPlugin;
 
 const BLOCK_INFO_REGISTRY: &str = "assets/block_registry.json";
 const BLOCK_TEXTURES_DIR: &str = "../assets/textures/blocks";
-const SEED: u32 = 66666;
 
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq, States)]
 enum GameState {
@@ -43,7 +42,7 @@ struct GameAssets {
 }
 
 #[derive(Debug, Resource)]
-struct GameResources {
+pub struct GameResources {
     material: Handle<StandardMaterial>,
     blocks: HashMap<String, Block>,
 }
@@ -230,30 +229,6 @@ fn setup(
 // fn generate_chunks(blocks: &[Block]) -> Vec<Chunk> {
 //     for x in -
 // }
-
-fn generate_chunk<'a>(pos: Vec3, blocks: &'a HashMap<String, Block>) -> Chunk<'a> {
-    let noise = noise::Perlin::new(SEED);
-    let scale = 0.015;
-    let mut chunk = Chunk::default();
-    for x in 0..16 {
-        let n_x = x as f64 + pos.x as f64;
-        for z in 0..16 {
-            let n_z = z as f64 + pos.z as f64;
-            let n_y = (noise.get([n_x * scale, n_z * scale]) * 64.0).round() as i32;
-            for y in 0..16 {
-                let d = n_y - (y as i32 + pos.y.round() as i32);
-                let block = match d {
-                    0 => Some(&blocks["grass"]),
-                    0..3 => Some(&blocks["dirt"]),
-                    0.. => Some(&blocks["stone"]),
-                    _ => None,
-                };
-                chunk.set_at(UVec3::new(x, y, z), block);
-            }
-        }
-    }
-    chunk
-}
 
 // fn update_hud(player_q: Query<&Transform, With<Player>>, mut text: Single<&mut Text, With<Hud>>) {
 //     let Ok(transform) = player_q.get_single() else {

@@ -4,6 +4,8 @@ use bevy::{
     render::mesh::{Indices, PrimitiveTopology},
 };
 
+pub const BLOCK_HALF_SIZE: f32 = 0.5;
+
 #[derive(Debug, Clone)]
 pub struct Block {
     front: Rect,
@@ -12,7 +14,6 @@ pub struct Block {
     right: Rect,
     top: Rect,
     bottom: Rect,
-    width: f32,
 }
 
 fn build_face_mesh(verices: Vec<[f32; 3]>, normal: [f32; 3], uvs: Vec<[f32; 2]>) -> Mesh {
@@ -35,14 +36,13 @@ impl Block {
             right,
             top,
             bottom,
-            width: 0.5,
         }
     }
 
     pub fn build_front_face_shifted(&self, shift: Vec3) -> Mesh {
         let normal = [0.0, 0.0, 1.0];
-        let max = shift + self.width;
-        let min = shift - self.width;
+        let max = shift + BLOCK_HALF_SIZE;
+        let min = shift - BLOCK_HALF_SIZE;
         let (uv_min, uv_max) = (self.front.min, self.front.max);
         build_face_mesh(
             vec![
@@ -67,8 +67,8 @@ impl Block {
 
     pub fn build_back_face_shifted(&self, shift: Vec3) -> Mesh {
         let normal = [0.0, 0.0, -1.0];
-        let max = shift + self.width;
-        let min = shift - self.width;
+        let max = shift + BLOCK_HALF_SIZE;
+        let min = shift - BLOCK_HALF_SIZE;
         let (uv_min, uv_max) = (self.back.min, self.back.max);
         build_face_mesh(
             vec![
@@ -93,8 +93,8 @@ impl Block {
 
     pub fn build_right_face_shifted(&self, shift: Vec3) -> Mesh {
         let normal = [1.0, 0.0, 0.0];
-        let max = shift + self.width;
-        let min = shift - self.width;
+        let max = shift + BLOCK_HALF_SIZE;
+        let min = shift - BLOCK_HALF_SIZE;
         let (uv_min, uv_max) = (self.right.min, self.right.max);
         build_face_mesh(
             vec![
@@ -119,8 +119,8 @@ impl Block {
 
     pub fn build_left_face_shifted(&self, shift: Vec3) -> Mesh {
         let normal = [-1.0, 0.0, 0.0];
-        let max = shift + self.width;
-        let min = shift - self.width;
+        let max = shift + BLOCK_HALF_SIZE;
+        let min = shift - BLOCK_HALF_SIZE;
         let (uv_min, uv_max) = (self.left.min, self.left.max);
         build_face_mesh(
             vec![
@@ -145,8 +145,8 @@ impl Block {
 
     pub fn build_top_face_shifted(&self, shift: Vec3) -> Mesh {
         let normal = [0.0, 1.0, 0.0];
-        let max = shift + self.width;
-        let min = shift - self.width;
+        let max = shift + BLOCK_HALF_SIZE;
+        let min = shift - BLOCK_HALF_SIZE;
         let (uv_min, uv_max) = (self.top.min, self.top.max);
         build_face_mesh(
             vec![
@@ -171,8 +171,8 @@ impl Block {
 
     pub fn build_bottom_face_shifted(&self, shift: Vec3) -> Mesh {
         let normal = [0.0, -1.0, 0.0];
-        let max = shift + self.width;
-        let min = shift - self.width;
+        let max = shift + BLOCK_HALF_SIZE;
+        let min = shift - BLOCK_HALF_SIZE;
         let (uv_min, uv_max) = (self.bottom.min, self.bottom.max);
         build_face_mesh(
             vec![
