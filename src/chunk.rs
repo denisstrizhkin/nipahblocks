@@ -12,7 +12,7 @@ const CHUNK_OFFSET: f32 = -(CHUNK_SIZE as f32 / 2.0) + BLOCK_HALF_SIZE;
 
 const SEED: u32 = 123456;
 
-const DRAW_DISTANCE: u32 = 2;
+const DRAW_DISTANCE: u32 = 3;
 
 pub struct ChunksPlugin;
 
@@ -25,7 +25,7 @@ impl Plugin for ChunksPlugin {
 
 fn player_pos_to_chunk_block(pos: Vec3) -> (IVec3, UVec3) {
     let size = Vec3::ONE * CHUNK_SIZE as f32;
-    let pos = pos - size / 2.0;
+    let pos = pos + size / 2.0;
     let chunk_pos = pos.div_euclid(size);
     let block_pos = pos.rem_euclid(size);
     (
@@ -46,9 +46,9 @@ fn update_chunks(
     };
     let (chunk_pos, _) = player_pos_to_chunk_block(transform.translation);
     let radius = DRAW_DISTANCE as i32;
-    for x in -radius..radius {
-        for z in -radius..radius {
-            let chunk_pos = chunk_pos + x * IVec3::X + z * IVec3::Z;
+    for x in -radius..=radius {
+        for z in -radius..=radius {
+            let chunk_pos = (chunk_pos + x * IVec3::X + z * IVec3::Z) * CHUNK_SIZE as i32;
             if !chunks_map.chunks.contains_key(&chunk_pos) {
                 let chunk_pos_f32 =
                     Vec3::new(chunk_pos.x as f32, chunk_pos.y as f32, chunk_pos.z as f32);
@@ -57,11 +57,14 @@ fn update_chunks(
                     game_resources.blocks_map.clone(),
                     game_resources.blocks.clone(),
                 );
-                commands.spawn((
-                    Mesh3d(meshes.add(chunk.clone())),
-                    MeshMaterial3d(game_resources.material.clone()),
-                    Transform::from_translation(chunk_pos_f32),
-                ));
+                if !chunk.is_empty() {
+                    info!("a: {chunk_pos_f32}");
+                    commands.spawn((
+                        Mesh3d(meshes.add(chunk.clone())),
+                        MeshMaterial3d(game_resources.material.clone()),
+                        Transform::from_translation(chunk_pos_f32),
+                    ));
+                }
                 chunks_map.chunks.insert(chunk_pos, chunk);
             }
         }
@@ -88,6 +91,7 @@ fn generate_chunk(
     block_map: Arc<HashMap<String, usize>>,
     blocks: Arc<Vec<Block>>,
 ) -> Chunk {
+    info!("generate_chunk_pos: {pos}");
     let noise = noise::Perlin::new(SEED);
     let scale = 0.015;
     let mut chunk = Chunk::new(blocks);
@@ -114,7 +118,7 @@ fn generate_chunk(
 fn index_to_pos(i: usize) -> UVec3 {
     let i = i as u32;
     let x = i / CHUNK_SIZE / CHUNK_SIZE;
-    let i = i - x * CHUNK_SIZE / CHUNK_SIZE;
+    let i = i - x * CHUNK_SIZE * CHUNK_SIZE;
     let y = i / CHUNK_SIZE;
     let z = i - y * CHUNK_SIZE;
     UVec3::new(x, y, z)
